@@ -13,7 +13,17 @@ add_executable(depsynt ${non_executable_SRC} ${aiger_lib_SRC} bins/synthesis.cpp
 
 list(APPEND CMAKE_PREFIX_PATH "./libs/spot" "./libs/abc")
 include_directories(./libs/abc/src)
-include_directories(./libs/spot/spot)
+include_directories(./libs/abc/src)
+
+# Dynamic Spot Include
+find_path(SPOT_INCLUDE_DIR NAMES spot/twa/twa.hh)
+if (SPOT_INCLUDE_DIR)
+    message(STATUS "Found Spot include dir: ${SPOT_INCLUDE_DIR}")
+    include_directories(${SPOT_INCLUDE_DIR})
+else()
+    # Fallback for submodule
+    include_directories(./libs/spot/spot)
+endif()
 include_directories(./src/findDeps ./src/models ./src/synthesis ./src/utils ./src/unates ./libs/aiger ./libs/abc ./libs/abc/src)
 
 # Configuration
