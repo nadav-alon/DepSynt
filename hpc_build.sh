@@ -52,6 +52,10 @@ extract_deb "$(pwd)/packages/nlohmann-json"
 
 # Build ABC
 echo "=== 2. Building ABC Library ==="
+if [ -z "$(ls -A libs/abc)" ]; then
+    echo "Error: libs/abc is empty. Please run: git submodule update --init --recursive"
+    exit 1
+fi
 cd libs/abc
 make -j4 ABC_USE_NO_READLINE=1 ABC_USE_PIC=1 libabc.so
 # Link ABC to our local deps folder so CMake finds it

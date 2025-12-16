@@ -10,6 +10,7 @@ Clone the repository to your work directory on the cluster.
 ```bash
 git clone <repo_url> depsynt
 cd depsynt
+git submodule update --init --recursive
 ```
 
 ## 2. Build
