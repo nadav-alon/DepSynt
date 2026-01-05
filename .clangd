@@ -1,0 +1,13 @@
+CompileFlags:
+  CompilationDatabase: .
+  Add:
+    - -Isrc/findDeps
+    - -Isrc/models
+    - -Isrc/synthesis
+    - -Isrc/utils
+    - -Isrc/unates
+    - -Ilibs/aiger
+    - -Ilibs/abc
+    - -Ilibs/abc/src
+    - -Ilibs/spot/spot
+    - -std=c++17
