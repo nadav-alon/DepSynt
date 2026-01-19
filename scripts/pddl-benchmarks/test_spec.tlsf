@@ -1,0 +1,43 @@
+INFO {
+  TITLE:       "Slippery Grid World 3x3"
+  DESCRIPTION: "Slippery grid world LTLf benchmark converted to TLSF"
+  SEMANTICS:   Mealy
+  TARGET:      Mealy
+}
+
+MAIN {
+  INPUTS {
+    r1;
+    r2;
+    r3;
+    c1;
+    c2;
+    c3;
+  }
+
+  OUTPUTS {
+    l;
+    r;
+    u;
+    d;
+  }
+
+  INITIALLY {
+    r1 && c1;
+  }
+
+  REQUIRE {
+    (((r1 || r2 || r3)) && (!(r1 && r2) && !(r1 && r3) && !(r2 && r3)));
+    (((c1 || c2 || c3)) && (!(c1 && c2) && !(c1 && c3) && !(c2 && c3)));
+    ((c2 -> X(l -> c1)) && (c3 -> X(l -> (c2 || c1))) && (c1 -> X(r -> (c2 || c3))) && (c2 -> X(r -> c3)) && (r2 -> X(u -> r1)) && (r3 -> X(u -> (r2 || r1))) && (r1 -> X(d -> (r2 || r3))) && (r2 -> X(d -> r3)) && (c1 -> X(u -> c1)) && (c1 -> X(d -> c1)) && (c2 -> X(u -> c2)) && (c2 -> X(d -> c2)) && (c3 -> X(u -> c3)) && (c3 -> X(d -> c3)) && (r1 -> X(l -> r1)) && (r1 -> X(r -> r1)) && (r2 -> X(l -> r2)) && (r2 -> X(r -> r2)) && (r3 -> X(l -> r3)) && (r3 -> X(r -> r3)));
+  }
+
+  ASSERT {
+    (((l || r || u || d)) && (!(l && r) && !(l && u) && !(l && d) && !(r && u) && !(r && d) && !(u && d)));
+    ((X true) -> ((l -> !(c1)) && (r -> !(c3)) && (u -> !(r1)) && (d -> !(r3))));
+  }
+
+  GUARANTEE {
+    (r1 && c1 -> F (r3 && c3)) && (r3 && c3 -> G (r1 && c1))
+  }
+}

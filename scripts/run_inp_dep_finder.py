@@ -123,7 +123,7 @@ def main():
     print(f"Found {len(tlsf_files)} TLSF files.")
     
     # FOR TESTING: only run on a few known ones
-    # tlsf_files = ["scripts/benchmarks/tlsf/amba/amba_gr1/specs/amba_gr+_2.tlsf", "scripts/test_simple.tlsf"]
+    tlsf_files = ["scripts/pddl-benchmarks/test_spec.tlsf"]
     
     results = []
     tlsf_files.sort()
