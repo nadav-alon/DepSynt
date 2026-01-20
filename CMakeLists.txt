@@ -24,7 +24,7 @@ else()
     # Fallback for submodule
     include_directories(./libs/spot/spot)
 endif()
-include_directories(./src/findDeps ./src/models ./src/synthesis ./src/utils ./src/unates ./libs/aiger ./libs/abc ./libs/abc/src)
+include_directories(./src/findDeps ./src/models ./src/synthesis ./src/utils ./src/unates ./libs/aiger ./libs/abc ./libs/abc/src ./src/inputDependencies)
 
 # Configuration
 option(TEMP_DIRECTORY "Directory to store temporary files" "./")
