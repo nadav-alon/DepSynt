@@ -3,13 +3,13 @@
 #include "inp_dep_utils.h"
 #include "synt_instance.h"
 #include "measure.h"
-#include "synthesis.cpp"
+#include "synthesis.h"
 
 using namespace std;
 
-static InpDepSyntMeasure* g_synt_measure = nullptr;
 
-int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy) {
+
+int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, SynthesisMeasure*& measure) {
 
     ostream nullout(nullptr);
     ostream& verbose = options.verbose ? std::cout : nullout;
@@ -32,15 +32,15 @@ int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strat
     synt_options.skip_unates = true;
     synt_options.dependency_timeout = options.dependency_timeout;
 
-    SyntInstance synt_instance(options.inputs, options.outputs, synt_options.formula);
+    auto* synt_instance = new SyntInstance(options.inputs, options.outputs, synt_options.formula);
 
-    g_synt_measure = new InpDepSyntMeasure(synt_instance, false, false);
-    InpDepSyntMeasure& synt_measure = *g_synt_measure;
+    measure = new InpDepSyntMeasure(*synt_instance, false, false);
+    InpDepSyntMeasure& synt_measure = static_cast<InpDepSyntMeasure&>(*measure);
 
     synt_measure.set_measure_bdd(options.measure_bdd);
 
     final_strategy = nullptr;
-    synthesis(synt_options, synt_instance, synt_measure, final_strategy);
+    synthesis(synt_options, *synt_instance, synt_measure, final_strategy);
 
     return final_strategy == nullptr ? EXIT_FAILURE : EXIT_SUCCESS; 
 }

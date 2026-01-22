@@ -32,12 +32,18 @@ int main(int argc, const char* argv[]) {
     
     spot::aig_ptr final_strategy = nullptr;
 
-    if (options.algorithm == Inp_Dep_Algorithm::ULTRA_NAIVE) {
-        ultra_naive(options, final_strategy);
-    } else if (options.algorithm == Inp_Dep_Algorithm::NAIVE) {
-        // return naive_inp_dep_synthesis(options, final_strategy);
-    } else if (options.algorithm == Inp_Dep_Algorithm::NAIVE_PROJECTED) {
-        // return naive_projected_inp_dep_synthesis(options, final_strategy);
+    switch (options.algorithm) {
+        case Inp_Dep_Algorithm::ULTRA_NAIVE:
+            ultra_naive(options, final_strategy, g_synt_measure);
+            break;
+        case Inp_Dep_Algorithm::NAIVE:
+            assert(false && "NOT IMPLEMENTED");
+            // return naive_inp_dep_synthesis(options, final_strategy);
+            break;
+        case Inp_Dep_Algorithm::NAIVE_PROJECTED:
+            assert(false && "NOT IMPLEMENTED");
+            // return naive_projected_inp_dep_synthesis(options, final_strategy);
+            break;
     }
 
     if (final_strategy != nullptr) {

@@ -47,6 +47,8 @@ struct FindDependenciesCLIOptions : public BaseCLIOptions {
     bool find_input_dependencies{};
 };
 
+void parse_cli_common(BaseCLIOptions &options, boost::program_options::options_description &desc, bool formula_required = true);
+
 struct pair_hash {
     template <class T1, class T2>
     std::size_t operator () (const std::pair<T1,T2> &p) const {

@@ -10,6 +10,7 @@ FILE(GLOB aiger_lib_SRC ${PROJECT_SOURCE_DIR}/libs/aiger/*.c)
 
 add_executable(find_dependencies ${non_executable_SRC} ${aiger_lib_SRC} bins/find_dependencies.cpp)
 add_executable(depsynt ${non_executable_SRC} ${aiger_lib_SRC} bins/synthesis.cpp)
+add_executable(inp_dep_synthesis ${non_executable_SRC} ${aiger_lib_SRC} bins/inp_dep_synthesis.cpp)
 
 list(APPEND CMAKE_PREFIX_PATH "./libs/spot" "./libs/abc")
 include_directories(./libs/abc/src)
@@ -70,3 +71,4 @@ set_target_properties(spot PROPERTIES IMPORTED_LOCATION ${spot_location})
 # Linking exectuables to packages
 target_link_libraries(find_dependencies boost_options bddx spot abc)
 target_link_libraries(depsynt boost_options bddx spot abc Threads::Threads)
+target_link_libraries(inp_dep_synthesis boost_options bddx spot abc Threads::Threads)

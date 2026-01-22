@@ -10,18 +10,17 @@
 namespace Options = boost::program_options;
 using namespace std;
 
-void parse_cli_common(BaseCLIOptions &options, Options::options_description &desc) {
-    desc.add_options()("formula",
-                       Options::value<string>(&options.formula)->required(),
-                       "LTL formula")(
-        "output", Options::value<string>(&options.outputs)->default_value(""),
-
-        "Output variables")("input",
-                            Options::value<string>(&options.inputs)->default_value(""),
-                            "Input variables")(
-        "verbose", Options::bool_switch(&options.verbose), "Verbose messages")(
-        "measures-path",
-        Options::value<string>(&options.measures_path)->default_value(""));
+void parse_cli_common(BaseCLIOptions &options, Options::options_description &desc, bool formula_required) {
+    auto setup = desc.add_options();
+    if (formula_required) {
+        setup("formula", Options::value<string>(&options.formula)->required(), "LTL formula");
+    } else {
+        setup("formula", Options::value<string>(&options.formula), "LTL formula");
+    }
+    setup("output", Options::value<string>(&options.outputs)->default_value(""), "Output variables")
+         ("input", Options::value<string>(&options.inputs)->default_value(""), "Input variables")
+         ("verbose", Options::bool_switch(&options.verbose), "Verbose messages")
+         ("measures-path", Options::value<string>(&options.measures_path)->default_value(""));
 }
 
 /**

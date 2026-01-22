@@ -4,4 +4,4 @@
 #include "measure.h"
 #include "synthesis.h"
 
-int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy);
+int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, SynthesisMeasure*& measure);

@@ -1,4 +1,3 @@
-#include "utils.cpp"
 #include "inp_dep_utils.h"
 
 namespace Options = boost::program_options;
@@ -15,14 +14,12 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
 
 
     Options::options_description desc("Input Dependencies Synthesis Options", 100);
-    parse_cli_common(options, desc);
+    parse_cli_common(options, desc, false);
     desc.add_options()
         ("env-formula,e", Options::value<string>(&options.env_formula)->required(),
          "Environment formula")
         ("system-formula,s", Options::value<string>(&options.system_formula)->required(),
          "System formula")
-        ("verbose,v", Options::bool_switch(&options.verbose)->default_value(false),
-         "Verbose output")
         ("measure-bdd,m", Options::bool_switch(&options.measure_bdd)->default_value(false),
          "Measure BDD")
         ("dependency-timeout,t", Options::value<int>(&options.dependency_timeout)->default_value(60000),
@@ -31,6 +28,8 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
          "Apply model checking")
         ("model-name,n", Options::value<string>(&options.model_name)->default_value("model"),
          "Model name")
+        ("algorithm,l", Options::value<string>()->default_value("ultra_naive"),
+         "Algorithm to use: ultra_naive, naive, naive_projected")
         ("help,h", "Produce help message");
 
     // Check if help is requested
@@ -51,6 +50,10 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
         Options::variables_map vm;
         Options::store(parsed_options, vm);
         Options::notify(vm);
+
+        if (vm.count("algorithm")) {
+            options.algorithm = string_to_inp_dep_algorithm(vm["algorithm"].as<string>());
+        }
 
         return true;
     } catch (const Options::error &e) {

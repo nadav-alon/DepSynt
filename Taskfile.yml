@@ -26,6 +26,13 @@ vars:
   FIND_DEPENDENCIES_TIMEOUT: 60m
 
 tasks:
+  # Input Dependencies Synthesis
+  inp_dep_synthesis:test:
+    desc: Build and run a test case for Input Dependencies Synthesis
+    cmds:
+      - make inp_dep_synthesis
+      - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm ultra_naive
+
   # Synthesis
   depsynt:
     desc: Run DepSynt tool on the generated benchmarks
