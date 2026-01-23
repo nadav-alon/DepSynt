@@ -16,6 +16,11 @@
 },
 {
   "directory": "/home/cowclaw/DepSynt-1",
+  "command": "/usr/bin/c++  -I/home/cowclaw/DepSynt-1/./libs/abc/src -I/home/cowclaw/DepSynt-1/./src/findDeps -I/home/cowclaw/DepSynt-1/./src/models -I/home/cowclaw/DepSynt-1/./src/synthesis -I/home/cowclaw/DepSynt-1/./src/utils -I/home/cowclaw/DepSynt-1/./src/unates -I/home/cowclaw/DepSynt-1/./libs/aiger -I/home/cowclaw/DepSynt-1/./libs/abc -I/home/cowclaw/DepSynt-1/./src/inputDependencies  -o CMakeFiles/find_dependencies.dir/src/inputDependencies/naive_algorithm.cpp.o -c /home/cowclaw/DepSynt-1/src/inputDependencies/naive_algorithm.cpp",
+  "file": "/home/cowclaw/DepSynt-1/src/inputDependencies/naive_algorithm.cpp"
+},
+{
+  "directory": "/home/cowclaw/DepSynt-1",
   "command": "/usr/bin/c++  -I/home/cowclaw/DepSynt-1/./libs/abc/src -I/home/cowclaw/DepSynt-1/./src/findDeps -I/home/cowclaw/DepSynt-1/./src/models -I/home/cowclaw/DepSynt-1/./src/synthesis -I/home/cowclaw/DepSynt-1/./src/utils -I/home/cowclaw/DepSynt-1/./src/unates -I/home/cowclaw/DepSynt-1/./libs/aiger -I/home/cowclaw/DepSynt-1/./libs/abc -I/home/cowclaw/DepSynt-1/./src/inputDependencies  -o CMakeFiles/find_dependencies.dir/src/inputDependencies/synthesis.cpp.o -c /home/cowclaw/DepSynt-1/src/inputDependencies/synthesis.cpp",
   "file": "/home/cowclaw/DepSynt-1/src/inputDependencies/synthesis.cpp"
 },
@@ -136,6 +141,11 @@
 },
 {
   "directory": "/home/cowclaw/DepSynt-1",
+  "command": "/usr/bin/c++  -I/home/cowclaw/DepSynt-1/./libs/abc/src -I/home/cowclaw/DepSynt-1/./src/findDeps -I/home/cowclaw/DepSynt-1/./src/models -I/home/cowclaw/DepSynt-1/./src/synthesis -I/home/cowclaw/DepSynt-1/./src/utils -I/home/cowclaw/DepSynt-1/./src/unates -I/home/cowclaw/DepSynt-1/./libs/aiger -I/home/cowclaw/DepSynt-1/./libs/abc -I/home/cowclaw/DepSynt-1/./src/inputDependencies  -o CMakeFiles/depsynt.dir/src/inputDependencies/naive_algorithm.cpp.o -c /home/cowclaw/DepSynt-1/src/inputDependencies/naive_algorithm.cpp",
+  "file": "/home/cowclaw/DepSynt-1/src/inputDependencies/naive_algorithm.cpp"
+},
+{
+  "directory": "/home/cowclaw/DepSynt-1",
   "command": "/usr/bin/c++  -I/home/cowclaw/DepSynt-1/./libs/abc/src -I/home/cowclaw/DepSynt-1/./src/findDeps -I/home/cowclaw/DepSynt-1/./src/models -I/home/cowclaw/DepSynt-1/./src/synthesis -I/home/cowclaw/DepSynt-1/./src/utils -I/home/cowclaw/DepSynt-1/./src/unates -I/home/cowclaw/DepSynt-1/./libs/aiger -I/home/cowclaw/DepSynt-1/./libs/abc -I/home/cowclaw/DepSynt-1/./src/inputDependencies  -o CMakeFiles/depsynt.dir/src/inputDependencies/synthesis.cpp.o -c /home/cowclaw/DepSynt-1/src/inputDependencies/synthesis.cpp",
   "file": "/home/cowclaw/DepSynt-1/src/inputDependencies/synthesis.cpp"
 },
@@ -253,6 +263,11 @@
   "directory": "/home/cowclaw/DepSynt-1",
   "command": "/usr/bin/c++  -I/home/cowclaw/DepSynt-1/./libs/abc/src -I/home/cowclaw/DepSynt-1/./src/findDeps -I/home/cowclaw/DepSynt-1/./src/models -I/home/cowclaw/DepSynt-1/./src/synthesis -I/home/cowclaw/DepSynt-1/./src/utils -I/home/cowclaw/DepSynt-1/./src/unates -I/home/cowclaw/DepSynt-1/./libs/aiger -I/home/cowclaw/DepSynt-1/./libs/abc -I/home/cowclaw/DepSynt-1/./src/inputDependencies  -o CMakeFiles/inp_dep_synthesis.dir/src/inputDependencies/inp_dep_utils.cpp.o -c /home/cowclaw/DepSynt-1/src/inputDependencies/inp_dep_utils.cpp",
   "file": "/home/cowclaw/DepSynt-1/src/inputDependencies/inp_dep_utils.cpp"
+},
+{
+  "directory": "/home/cowclaw/DepSynt-1",
+  "command": "/usr/bin/c++  -I/home/cowclaw/DepSynt-1/./libs/abc/src -I/home/cowclaw/DepSynt-1/./src/findDeps -I/home/cowclaw/DepSynt-1/./src/models -I/home/cowclaw/DepSynt-1/./src/synthesis -I/home/cowclaw/DepSynt-1/./src/utils -I/home/cowclaw/DepSynt-1/./src/unates -I/home/cowclaw/DepSynt-1/./libs/aiger -I/home/cowclaw/DepSynt-1/./libs/abc -I/home/cowclaw/DepSynt-1/./src/inputDependencies  -o CMakeFiles/inp_dep_synthesis.dir/src/inputDependencies/naive_algorithm.cpp.o -c /home/cowclaw/DepSynt-1/src/inputDependencies/naive_algorithm.cpp",
+  "file": "/home/cowclaw/DepSynt-1/src/inputDependencies/naive_algorithm.cpp"
 },
 {
   "directory": "/home/cowclaw/DepSynt-1",

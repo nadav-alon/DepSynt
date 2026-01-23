@@ -1,0 +1,27 @@
+#compdef inp_dep_synthesis
+
+_inp_dep_synthesis() {
+    local -a algorithms
+    algorithms=(
+        'ultra_naive:Ultra naive algorithm'
+        'naive:Naive algorithm'
+        'naive_projected:Naive projected algorithm'
+    )
+
+    _arguments \
+        '--formula[LTL formula]:LTL formula' \
+        '--output[Output variables]:variables' \
+        '--input[Input variables]:variables' \
+        '--verbose[Verbose messages]' \
+        '--measures-path[Path to measures]:measures path:_files' \
+        '(-e --env-formula)'{-e,--env-formula}'[Environment formula (required)]:environment formula' \
+        '(-s --system-formula)'{-s,--system-formula}'[System formula (required)]:system formula' \
+        '(-m --measure-bdd)'{-m,--measure-bdd}'[Measure BDD size of NBAs]' \
+        '(-t --dependency-timeout)'{-t,--dependency-timeout}'[Dependency timeout in milliseconds]:timeout (ms) [60000]' \
+        '(-a --apply-model-checking)'{-a,--apply-model-checking}'[Apply model checking to the synthesized strategy]' \
+        '(-n --model-name)'{-n,--model-name}'[Model name]:model name [model]' \
+        '(-l --algorithm)'{-l,--algorithm}'[Algorithm to use]:algorithm:((ultra_naive\:"Ultra naive algorithm" naive\:"Naive algorithm" naive_projected\:"Naive projected algorithm"))' \
+        '(-h --help)'{-h,--help}'[Produce help message]'
+}
+
+_inp_dep_synthesis "$@"

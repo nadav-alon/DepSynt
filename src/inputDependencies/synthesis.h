@@ -1,3 +1,6 @@
+#ifndef INP_DEP_SYNTHESIS_H
+#define INP_DEP_SYNTHESIS_H
+
 #include "synt_instance.h"
 #include "synt_measure.h"
 #include "utils.h"
@@ -5,7 +8,6 @@
 #include <spot/twaalgos/aiger.hh>
 #include <spot/twaalgos/synthesis.hh>
 #include <vector>
-
 
 using namespace std;
 using namespace spot;
@@ -116,4 +118,6 @@ bool decompose_synthesis_only_dependents_as_aut(
     vector<string>& dependent_variables);
 
 
-int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, SynthesisMeasure& synt_measure, spot::aig_ptr& final_strategy);
+int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, SynthesisMeasure& synt_measure, spot::aig_ptr& final_strategy, spot::twa_graph_ptr precalc_nba = nullptr);
+
+#endif // INP_DEP_SYNTHESIS_H

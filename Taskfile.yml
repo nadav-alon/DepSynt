@@ -27,11 +27,24 @@ vars:
 
 tasks:
   # Input Dependencies Synthesis
-  inp_dep_synthesis:test:
+  inp_dep_synthesis:ultra_naive:
     desc: Build and run a test case for Input Dependencies Synthesis
     cmds:
       - make inp_dep_synthesis
       - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm ultra_naive
+
+  # Input Dependencies Synthesis
+  inp_dep_synthesis:naive:
+    desc: Build and run a test case for Input Dependencies Synthesis
+    cmds:
+      - make inp_dep_synthesis
+      - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm naive
+
+  inp_dep_synthesis:naive_projected:
+    desc: Build and run a test case for Input Dependencies Synthesis
+    cmds:
+      - make inp_dep_synthesis
+      - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm naive_projected
 
   # Synthesis
   depsynt:

@@ -1,9 +1,6 @@
-
-#include <spot/twaalgos/synthesis.hh>
-#include "inp_dep_utils.h"
+#include "ultra_naive_algorithm.h"
 #include "synt_instance.h"
-#include "measure.h"
-#include "synthesis.h"
+#include <iostream>
 
 using namespace std;
 

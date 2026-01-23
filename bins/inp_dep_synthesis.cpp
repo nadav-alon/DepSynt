@@ -6,6 +6,7 @@
 
 #include "../src/inputDependencies/inp_dep_utils.h"
 #include "../src/inputDependencies/ultra_naive_algorithm.h"
+#include "../src/inputDependencies/naive_algorithm.h"
 
 using namespace std;
 using namespace spot;
@@ -37,12 +38,10 @@ int main(int argc, const char* argv[]) {
             ultra_naive(options, final_strategy, g_synt_measure);
             break;
         case Inp_Dep_Algorithm::NAIVE:
-            assert(false && "NOT IMPLEMENTED");
-            // return naive_inp_dep_synthesis(options, final_strategy);
+            naive(options, final_strategy, g_synt_measure, false);
             break;
         case Inp_Dep_Algorithm::NAIVE_PROJECTED:
-            assert(false && "NOT IMPLEMENTED");
-            // return naive_projected_inp_dep_synthesis(options, final_strategy);
+            naive(options, final_strategy, g_synt_measure, true);
             break;
     }
 

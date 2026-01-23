@@ -225,6 +225,7 @@ bool decompose_synthesis_only_dependents_as_aut(
     }
 
     if (deps_strategy != nullptr) {
+        // EXPONENTIAL IN INPUTS
         deps_strategy_aut = deps_strategy->as_automaton(false);
     } else {
         deps_strategy_aut = nullptr;
@@ -232,7 +233,7 @@ bool decompose_synthesis_only_dependents_as_aut(
     return true;
 }
 
-int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, SynthesisMeasure& synt_measure, spot::aig_ptr& final_strategy) {
+int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, SynthesisMeasure& synt_measure, spot::aig_ptr& final_strategy, spot::twa_graph_ptr precalc_nba = nullptr) {
     ostream nullout(nullptr);
     ostream& verbose = options.verbose ? std::cout : nullout;
 
@@ -257,7 +258,7 @@ int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, Synthesi
 
     try {
         // Get NBA for synthesis
-        spot::twa_graph_ptr nba = get_nba_for_synthesis(
+        spot::twa_graph_ptr nba = precalc_nba != nullptr ? precalc_nba : get_nba_for_synthesis(
             synt_instance.get_formula_parsed(), gi, synt_measure, verbose);
 
         // Handle Unate

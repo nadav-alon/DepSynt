@@ -86,6 +86,8 @@ cmake_install.cmake
 find_dependencies
 find_unates
 synthesis
+depsynt
+inp_dep_synthesis
 
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
