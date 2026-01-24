@@ -25,26 +25,31 @@ vars:
   FIND_DEPENDENCIES_SUMMARY: ./tasks_output/find_deps.csv
   FIND_DEPENDENCIES_TIMEOUT: 60m
 
+  SLIPPERY_ENV: "(r1 & c1) & G(c1 & r -> X c2) & G(c2 & l -> X c1)"
+  SLIPPERY_SYS: "G(l | r) & G(!(l & r)) & F c2"
+  SLIPPERY_INS: "r1,c1,c2"
+  SLIPPERY_OUTS: "l,r"
+
 tasks:
   # Input Dependencies Synthesis
   inp_dep_synthesis:ultra_naive:
     desc: Build and run a test case for Input Dependencies Synthesis
     cmds:
       - make inp_dep_synthesis
-      - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm ultra_naive
+      - ./inp_dep_synthesis -e '{{.SLIPPERY_ENV}}' -s '{{.SLIPPERY_SYS}}' --input '{{.SLIPPERY_INS}}' --output '{{.SLIPPERY_OUTS}}' --verbose --algorithm ultra_naive
 
   # Input Dependencies Synthesis
   inp_dep_synthesis:naive:
     desc: Build and run a test case for Input Dependencies Synthesis
     cmds:
       - make inp_dep_synthesis
-      - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm naive
+      - ./inp_dep_synthesis -e '{{.SLIPPERY_ENV}}' -s '{{.SLIPPERY_SYS}}' --input '{{.SLIPPERY_INS}}' --output '{{.SLIPPERY_OUTS}}' --verbose --algorithm naive
 
   inp_dep_synthesis:naive_projected:
     desc: Build and run a test case for Input Dependencies Synthesis
     cmds:
       - make inp_dep_synthesis
-      - ./inp_dep_synthesis -e "G(a -> Fb)" -s "G(b -> Fa)" --input "a" --output "b" --verbose --algorithm naive_projected
+      - ./inp_dep_synthesis -e '{{.SLIPPERY_ENV}}' -s '{{.SLIPPERY_SYS}}' --input '{{.SLIPPERY_INS}}' --output '{{.SLIPPERY_OUTS}}' --verbose --algorithm naive_projected
 
   # Synthesis
   depsynt:
