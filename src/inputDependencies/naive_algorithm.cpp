@@ -126,9 +126,9 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     full_synt_options.skip_unates = true;
     full_synt_options.dependency_timeout = options.dependency_timeout;
 
-    auto synt = new SyntInstance(options.inputs, options.outputs, full_synt_options.formula);
+    SyntInstance synt(options.inputs, options.outputs, full_synt_options.formula);
 
-    synthesis(full_synt_options, *synt, dependent_measure, final_strategy, product_aut);
+    synthesis(full_synt_options, synt, dependent_measure, final_strategy, product_aut);
     
 
     return final_strategy == nullptr ? EXIT_FAILURE : EXIT_SUCCESS; 
