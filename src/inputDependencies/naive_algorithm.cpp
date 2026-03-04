@@ -71,8 +71,11 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
                                                independent_variables,
                                                dependent_variables);
 
+    if (!dep_realizable) {
+        return EXIT_FAILURE;
+    }
     
-    auto product_aut = spot::product(deps_nba, deps_strategy_aut);
+    auto product_aut = deps_strategy_aut != nullptr ? spot::product(deps_nba, deps_strategy_aut) : deps_nba;
 
     product_aut = spot::scc_filter_states(product_aut);
 
