@@ -14,6 +14,10 @@ using namespace spot;
 static InputDependenciesCLIOptions options;
 static SynthesisMeasure* g_synt_measure;
 
+struct NullBuffer : std::streambuf {
+    int overflow(int c) override { return c; }
+};
+
 void on_sighup(int args);
 
 int main(int argc, const char* argv[]) {
@@ -21,7 +25,8 @@ int main(int argc, const char* argv[]) {
     if (!parsed_cli_status) {
         return EXIT_FAILURE;
     }
-    ostream nullout(nullptr);
+    NullBuffer nullbuf;
+    ostream nullout(&nullbuf);
     ostream& verbose = options.verbose ? std::cout : nullout;
 
     verbose << "=> Loaded Options: " << endl;

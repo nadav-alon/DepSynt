@@ -12,9 +12,14 @@ using namespace std;
 
 
 
+struct NullBuffer : std::streambuf {
+    int overflow(int c) override { return c; }
+};
+
 int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, SynthesisMeasure*& measure, bool project) {
 
-    ostream nullout(nullptr);
+    NullBuffer nullbuf;
+    ostream nullout(&nullbuf);
     ostream& verbose = options.verbose ? std::cout : nullout;
 
     spot::synthesis_info gi;

@@ -5,10 +5,14 @@
 using namespace std;
 
 
+struct NullBuffer : std::streambuf {
+    int overflow(int c) override { return c; }
+};
 
 int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, SynthesisMeasure*& measure) {
 
-    ostream nullout(nullptr);
+    NullBuffer nullbuf;
+    ostream nullout(&nullbuf);
     ostream& verbose = options.verbose ? std::cout : nullout;
 
     spot::synthesis_info gi;

@@ -232,9 +232,13 @@ bool decompose_synthesis_only_dependents_as_aut(
     }
     return true;
 }
+struct NullBuffer : std::streambuf {
+    int overflow(int c) override { return c; }
+};
 
 int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, SynthesisMeasure& synt_measure, spot::aig_ptr& final_strategy, spot::twa_graph_ptr precalc_nba = nullptr) {
-    ostream nullout(nullptr);
+    NullBuffer nullbuf;
+    ostream nullout(&nullbuf);
     ostream& verbose = options.verbose ? std::cout : nullout;
 
     verbose << "==== Starting Synthesis ====" << endl;
