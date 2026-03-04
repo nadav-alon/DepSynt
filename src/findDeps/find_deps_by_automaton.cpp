@@ -129,6 +129,8 @@ bool FindDepsByAutomaton::is_variable_dependent(std::string dependent_var,
          * 5. Corresponding check for (q, p) is required
          */
         for (auto pairState : pairStates) {
+            if(m_stop_flag.load()) return false;
+            
             if(are_states_collides_by_edges(m_automaton, pairState.first, pairState.second, dependent_var_num)) {
                 return false;
             }
@@ -141,6 +143,7 @@ bool FindDepsByAutomaton::is_variable_dependent(std::string dependent_var,
         // For each pair-state, Can we move to an accepting state with different
         // value of dependent_var? If yes, then dependent_var is not dependent
         for (auto pairState : pairStates) {
+            if(m_stop_flag.load()) return false;
             for (auto& t1 : m_automaton->out(pairState.first)) {
                 for (auto& t2 : m_automaton->out(pairState.second)) {
                     PairEdges pair_edges = PairEdges(t1, t2);
