@@ -12,8 +12,8 @@ When working on separate tasks, adhere to the following workflow to ensure tasks
 
 2. **Commits*: Make sure to seperate work to different commits when it makes sense, so the flow of the work and repo history can be logically inferred. No need for multiple commits for small changes and fixes, but for a big feature that has a bunch of different working parts that might require debugging on which commit broke something, multiple commits can help.
 
-3. **Worktrees for Review**: To allow the user to review the code while the agent is still coding or iterating on feedback, create a git worktree in a separate directory outside the main repository directory. To do this, you must checkout the previous branch first before creating the worktree.
-   - `git checkout <previous-branch>`
+3. **Worktrees for Review**: To allow the user to review the code while the agent is still coding or iterating on feedback, create a git worktree in a separate directory outside the main repository directory.
+   - `git checkout --detach` to make sure the branch is free to create a worktree on.
    - `git worktree add ../review-area/review-<feature-name> task/your-feature-name`
    - `code ../review-area/review-<feature-name>` to open vscode automatically on that branch, to allow the user to inspect the state, run tests, or review changes without interfering with the ongoing development and open files in the main repository.
 
