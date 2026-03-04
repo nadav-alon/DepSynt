@@ -6,6 +6,8 @@ description: How to handle measuring and benchmarking in the DepSynt project
 
 The project uses a structured measurement system to track the performance and characteristics of the synthesis process. This is primarily implemented in `src/utils/synt_measure.h` and `src/utils/synt_measure.cpp`.
 
+**Make sure in all implementation changes to include measurements**
+
 ## 📊 Measurement System
 
 ### 1. The `SynthesisMeasure` Class
@@ -32,22 +34,30 @@ task generate_benchmarks
 ```
 This runs `scripts/tlsf_to_text.py` and stores the results in `./tasks_output/generated_benchmarks/text`.
 
-### 2. Running Benchmarks
+### 2. Adding or Updating Benchmarks
+The benchmark suite is dynamic. To add new benchmarks:
+- **TLSF Source**: Add new `.tlsf` files to the appropriate subdirectory in `scripts/benchmarks/`.
+- **Benchmark Families**: If adding a new category, update the `BENCHMARKS_FAMALIES` variable in `Taskfile.yml`.
+- **Text Conversion**: Run `task generate_benchmarks` to ensure the new files are parsed and listed in the `tasks_output/` pool.
+- **Verification**: Check `./tasks_output/generated_benchmarks/text` to verify that each `.tlsf` now has a corresponding `.txt` with the formula and variable partitions.
+
+### 3. Running Benchmarks
 #### Local Execution
 Use `run-benchmarks.py` for small-scale local tests:
 ```bash
 python run-benchmarks.py --benchmarks "mux,shift" --timeout 5000 --output-csv results.csv
 ```
 
-#### Cluster Execution (Slurm)
-The `Taskfile.yml` contains tasks for submitting large-scale jobs to a Slurm cluster:
+#### Cluster Execution (Slurm / HPC)
+The `Taskfile.yml` contains tasks for submitting large-scale jobs to a Slurm cluster. For automated remote workflows (Sync, Build, Run, Fetch), refer to the **[hpc.md](file:///home/cowclaw/DepSynt-1/.agents/workflows/hpc.md)** workflow.
+
 - `task depsynt`: Runs the main tool on the generated benchmarks.
 - `task find_dependencies`: Only runs the dependency finder.
 - `task depsynt:measure`: Runs the tool with extra measurement flags enabled.
 
 These tasks use `scripts/slurm_task_gen.py` to create submission scripts.
 
-### 3. Summarizing Results
+### 4. Summarizing Results
 Once benchmarking is complete, aggregate the `.out` (JSON) and `.err` files into a single CSV:
 ```bash
 task depsynt:summary

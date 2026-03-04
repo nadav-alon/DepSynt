@@ -25,6 +25,10 @@ vars:
   FIND_DEPENDENCIES_SUMMARY: ./tasks_output/find_deps.csv
   FIND_DEPENDENCIES_TIMEOUT: 60m
 
+  # HPC variables
+  HPC_HOST: login
+  HPC_REMOTE_DIR: depsynt
+
   SLIPPERY_ENV: "(r1 & c1) & G(c1 & r -> X c2) & G(c2 & l -> X c1)"
   SLIPPERY_SYS: "G(l | r) & G(!(l & r)) & F c2"
   SLIPPERY_INS: "r1,c1,c2"
@@ -197,4 +201,83 @@ tasks:
     cmds:
       - chmod +x ./scripts/remove_skipped_synt.sh
       - ./scripts/remove_skipped_synt.sh {{.CLEAN_PATH}}
+
+  # HPC Remote Workflow
+  hpc:sync:
+    desc: Sync local code and benchmarks to HPC via rsync
+    cmds:
+      - ssh {{.HPC_HOST}} "mkdir -p {{.HPC_REMOTE_DIR}}"
+      - rsync -avz --exclude '.git/' --exclude 'build/' --exclude 'libs/' --exclude 'tasks_output/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
+
+  hpc:build:
+    desc: Build the project on HPC using hpc_build.sh
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && git submodule update --init --recursive && chmod +x hpc_build.sh && ./hpc_build.sh"
+
+  hpc:run:depsynt:
+    desc: Submit Slurm jobs for depsynt on HPC
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && task generate_benchmarks && task depsynt"
+
+  hpc:run:find_deps:
+    desc: Submit Slurm jobs for find_dependencies on HPC
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && task generate_benchmarks && task find_dependencies"
+
+  hpc:monitor:
+    desc: Polling squeue to check if jobs are still running
+    cmds:
+      - |
+        echo "Monitoring Slurm jobs for user..."
+        while ssh {{.HPC_HOST}} "squeue -u \$USER | grep -E 'depsynt|find_de' > /dev/null"; do
+          echo "Jobs are still running. Checking again in 60 seconds..."
+          sleep 60
+        done
+        echo "All Slurm jobs have finished."
+
+  hpc:fetch:
+    desc: Fetch benchmark results from HPC
+    cmds:
+      - mkdir -p ./tasks_output_hpc
+      - scp -r {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/tasks_output/* ./tasks_output_hpc/
+      - echo "Results fetched to ./tasks_output_hpc"
+
+  hpc:summary:
+    desc: Aggregate JSON results from HPC into summary CSVs for all tools
+    cmds:
+      - chmod +x ./scripts/results_summarizer.py
+      - |
+        for tool in depsynt strix spotmodular find_deps; do
+          if [ -d "./tasks_output_hpc/$tool" ]; then
+            echo "Summarizing $tool..."
+            ./scripts/results_summarizer.py --result-path=./tasks_output_hpc/$tool --benchmarks-path={{.GENERATED_BENCHMARK_PATH}}/text --summary-output=./tasks_output_hpc/$tool.csv --tool=$tool
+          fi
+        done
+
+  hpc:cactus:
+    desc: Generate Cactus Plot from the HPC results
+    cmds:
+      - task: hpc:summary
+      - |
+        echo "Preparing HPC results for Cactus plot..."
+        mkdir -p ./tasks_output
+        cp ./tasks_output_hpc/*.csv ./tasks_output/
+        python -m scripts.generate_cactus
+        echo "Cactus plot generated (likely as cactus-*.png)"
+
+  hpc:visualize:
+    desc: Open the visualization notebook or plots
+    cmds:
+      - task: hpc:cactus
+      - echo "You can now open scripts/visualization.ipynb or view the generated .png plots."
+
+  hpc:full_run:
+    desc: Complete HPC workflow (Sync -> Build -> Run -> Monitor -> Fetch -> Summary -> Visualize)
+    cmds:
+      - task: hpc:sync
+      - task: hpc:build
+      - task: hpc:run:depsynt
+      - task: hpc:monitor
+      - task: hpc:fetch
+      - task: hpc:visualize
 
