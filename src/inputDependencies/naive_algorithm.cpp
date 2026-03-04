@@ -71,10 +71,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
                                                independent_variables,
                                                dependent_variables);
 
-    
     auto product_aut = spot::product(deps_nba, deps_strategy_aut);
-
-    product_aut = spot::scc_filter_states(product_aut);
 
     if (project) {
         // 1. Retrieve the mapping from product states to original state pairs
@@ -106,6 +103,8 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
         
         product_aut = projected_aut;
     }
+    
+    product_aut = spot::scc_filter_states(product_aut);
 
 
     final_strategy = nullptr;
