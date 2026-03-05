@@ -15,10 +15,6 @@ int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strat
     ostream nullout(&nullbuf);
     ostream& verbose = options.verbose ? std::cout : nullout;
 
-    spot::synthesis_info gi;
-    gi.s = spot::synthesis_info::algo::SPLIT_DET;
-    gi.minimize_lvl = 2;  // i.e, simplication level
-
     SynthesisCLIOptions synt_options;
 
     synt_options.formula = "(" + options.env_formula + ") -> (" + options.system_formula + ")";
@@ -33,12 +29,25 @@ int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strat
     synt_options.skip_unates = true;
     synt_options.dependency_timeout = options.dependency_timeout;
 
-    auto* synt_instance = new SyntInstance(options.inputs, options.outputs, synt_options.formula);
+    spot::parsed_formula pf_env = spot::parse_infix_psl(options.env_formula);
+    if (pf_env.format_errors(std::cerr)) {
+        return EXIT_FAILURE;
+    }
+    spot::parsed_formula pf_sys = spot::parse_infix_psl(options.system_formula);
+    if (pf_sys.format_errors(std::cerr)) {
+        return EXIT_FAILURE;
+    }
 
-    measure = new InpDepSyntMeasure(*synt_instance, false, false);
+    spot::formula full_formula = spot::formula::Implies(pf_env.f, pf_sys.f);
+
+    std::vector<std::string> inputs_vec, outputs_vec;
+    extract_variables(options.inputs, inputs_vec);
+    extract_variables(options.outputs, outputs_vec);
+
+    SyntInstance* synt_instance = new SyntInstance(inputs_vec, outputs_vec, full_formula);
+
+    measure = new InpDepSyntMeasure(*synt_instance, options.measure_bdd, false);
     InpDepSyntMeasure& synt_measure = static_cast<InpDepSyntMeasure&>(*measure);
-
-    synt_measure.set_measure_bdd(options.measure_bdd);
 
     final_strategy = nullptr;
     synthesis(synt_options, *synt_instance, synt_measure, final_strategy);

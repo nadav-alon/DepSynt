@@ -1,5 +1,5 @@
 #include "synt_instance.h"
-#define _GLIBCXX_USE_NANOSLEEP
+
 #include <iostream>
 #include <spot/twaalgos/aiger.hh>
 #include <vector>
@@ -262,8 +262,12 @@ int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, Synthesi
 
     try {
         // Get NBA for synthesis
-        spot::twa_graph_ptr nba = precalc_nba != nullptr ? precalc_nba : get_nba_for_synthesis(
-            synt_instance.get_formula_parsed(), gi, synt_measure, verbose);
+        spot::twa_graph_ptr nba = nullptr;
+        if (precalc_nba != nullptr) {
+            nba = precalc_nba;
+        } else {
+             nba = get_nba_for_synthesis(synt_instance.get_formula_parsed(), gi, synt_measure, verbose);
+        }
 
         // Handle Unate
         if(options.skip_unates) {

@@ -64,7 +64,9 @@ int main(int argc, const char* argv[]) {
 
 void on_sighup(int args) {
     try {
-        dump_measures(*g_synt_measure, options);
+        if (g_synt_measure != nullptr) {
+            dump_measures(*g_synt_measure, options);
+        }
     } catch (const std::runtime_error& re) {
         std::cout << "Runtime error: " << re.what() << std::endl;
         dump_measures(*g_synt_measure, options);

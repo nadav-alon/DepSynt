@@ -165,3 +165,6 @@ submit_strix
 # clangd cache
 .clangd/
 .cache/
+
+# Local build artifacts
+/libs/spot/inst/

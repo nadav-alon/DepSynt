@@ -42,7 +42,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
 
     auto* dependent_instance = new SyntInstance(options.outputs, options.inputs, dependant_synthesis_opts.formula);
 
-    measure = new InpDepSyntMeasure(*dependent_instance, false, false);
+    measure = new InpDepSyntMeasure(*dependent_instance, options.measure_bdd, false);
     InpDepSyntMeasure& dependent_measure = static_cast<InpDepSyntMeasure&>(*measure);
 
     dependent_measure.set_measure_bdd(options.measure_bdd);
@@ -131,9 +131,22 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     full_synt_options.skip_unates = true;
     full_synt_options.dependency_timeout = options.dependency_timeout;
 
-    SyntInstance synt(options.inputs, options.outputs, full_synt_options.formula);
+    auto* synt = new SyntInstance(options.inputs, options.outputs, full_synt_options.formula);
 
-    synthesis(full_synt_options, synt, dependent_measure, final_strategy, product_aut);
+    twa_graph_ptr full_nba = get_nba_for_synthesis(
+        synt->get_formula_parsed(), 
+        gi, 
+        dependent_measure, 
+        verbose
+    );
+
+    twa_graph_ptr final_synthesis_aut = full_nba;
+    if (deps_strategy_aut != nullptr) {
+        final_synthesis_aut = spot::product(full_nba, deps_strategy_aut);
+        final_synthesis_aut = spot::scc_filter_states(final_synthesis_aut);
+    }
+
+    synthesis(full_synt_options, *synt, dependent_measure, final_strategy, final_synthesis_aut);
     
 
     return final_strategy == nullptr ? EXIT_FAILURE : EXIT_SUCCESS; 
