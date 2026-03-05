@@ -52,12 +52,16 @@ int main(int argc, const char* argv[]) {
 
     if (final_strategy != nullptr) {
         verbose << "=> Strategy found" << endl;
-        dump_measures(*g_synt_measure, options);
+        if (g_synt_measure != nullptr) {
+            dump_measures(*g_synt_measure, options);
+        }
         return EXIT_SUCCESS;
     }
 
     verbose << "=> Strategy not found" << endl;
-    dump_measures(*g_synt_measure, options);
+    if (g_synt_measure != nullptr) {
+        dump_measures(*g_synt_measure, options);
+    }
     return EXIT_FAILURE;
 
 }

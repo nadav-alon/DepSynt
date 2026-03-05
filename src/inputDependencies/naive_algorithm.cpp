@@ -82,7 +82,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     
     auto product_aut = deps_strategy_aut != nullptr ? spot::product(deps_nba, deps_strategy_aut) : deps_nba;
 
-    if (project) {
+    if (project && deps_strategy_aut != nullptr) {
         // 1. Retrieve the mapping from product states to original state pairs
         auto ps = product_aut->get_named_prop<spot::product_states>("product-states");
         
