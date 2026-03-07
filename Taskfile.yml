@@ -27,7 +27,7 @@ vars:
 
   # HPC variables
   HPC_HOST: login
-  HPC_REMOTE_DIR: depsynt
+  HPC_REMOTE_DIR: work/DepSynt
 
   SLIPPERY_ENV: "(r1 & c1) & G(c1 & r -> X c2) & G(c2 & l -> X c1)"
   SLIPPERY_SYS: "G(l | r) & G(!(l & r)) & F c2"
