@@ -210,14 +210,15 @@ tasks:
       - rsync -avz --exclude '.git/' --exclude 'build/' --exclude 'libs/' --exclude 'tasks_output/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
 
   hpc:build:
-    desc: Build the project on HPC using hpc_build.sh
+    desc: Build the project on HPC using sbatch hpc_build.sh
     cmds:
-      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && git submodule update --init --recursive && chmod +x hpc_build.sh && ./hpc_build.sh"
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && git submodule update --init --recursive && chmod +x hpc_build.sh && sbatch hpc_build.sh"
+      - task: hpc:monitor
 
   hpc:run:depsynt:
     desc: Submit Slurm jobs for depsynt on HPC
     cmds:
-      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && task generate_benchmarks && task depsynt"
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && task generate_benchmarks && task depsynt BENCHMARKS_FAMALIES='{{.BENCHMARKS_FAMALIES}}'"
 
   hpc:run:find_deps:
     desc: Submit Slurm jobs for find_dependencies on HPC
@@ -229,7 +230,7 @@ tasks:
     cmds:
       - |
         echo "Monitoring Slurm jobs for user..."
-        while ssh {{.HPC_HOST}} "squeue -u \$USER | grep -E 'depsynt|find_de' > /dev/null"; do
+        while ssh {{.HPC_HOST}} "squeue -u \$USER | grep -E 'depsynt|find_de|build_de' > /dev/null"; do
           echo "Jobs are still running. Checking again in 60 seconds..."
           sleep 60
         done
@@ -286,4 +287,15 @@ tasks:
     cmds:
       - make inp_dep_synthesis
       - python3 src/inputDependencies/verify_algorithms.py
+
+  hpc:verify_strategy:
+    desc: Verify HPC strategy with a single benchmark family (mux)
+    cmds:
+      - task: hpc:sync
+      - task: hpc:build
+      - task: hpc:run:depsynt
+        vars: { BENCHMARKS_FAMALIES: "mux" }
+      - task: hpc:monitor
+      - task: hpc:fetch
+      - task: hpc:visualize
 

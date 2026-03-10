@@ -29,7 +29,8 @@ def generate_depsynt(args, measured):
         'BENCHMARKS_DIR': benchmarks_path,
         'ALLOWED_FAMILIES': " ".join(["\""+f+"\"" for f in families]),
         'FIND_DEP_TIMEOUT': '12000',
-        'MEASURES': 'True' if measured else ''
+        'MEASURES': 'True' if measured else '',
+        'CLI_TOOL': './depsynt'
     }
 
     for var_name, var_value in variables.items():
@@ -77,6 +78,7 @@ def generate_spotmodular(args):
         'BENCHMARKS_DIR': benchmarks_path,
         'ALLOWED_FAMILIES': " ".join(["\""+f+"\"" for f in families]),
         'FIND_DEP_TIMEOUT': "0",
+        'CLI_TOOL': './depsynt'
     }
 
     for var_name, var_value in variables.items():
