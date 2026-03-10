@@ -281,3 +281,9 @@ tasks:
       - task: hpc:fetch
       - task: hpc:visualize
 
+  verify_algorithms:
+    desc: Verify input dependencies algorithms using the benchmark suite
+    cmds:
+      - make inp_dep_synthesis
+      - python3 src/inputDependencies/verify_algorithms.py
+

@@ -1,0 +1,106 @@
+[
+  {
+    "name": "Independent_Realizable",
+    "env": "true",
+    "sys": "G(i1 -> o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Independent_Unrealizable",
+    "env": "true",
+    "sys": "G(o1 <-> !o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected": "Unrealizable"
+  },
+  {
+    "name": "Simple_Mutual_Exclusion_Dependence",
+    "env": "G(i1 ^ i2)",
+    "sys": "G(i1 -> o1) & G(i2 -> o2)",
+    "inputs": "i1,i2",
+    "outputs": "o1,o2",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Mutual_Exclusion_Contradiction_Prevented",
+    "env": "G(i1 ^ i2)",
+    "sys": "G(i1 -> o1) & G(i2 -> !o1)",
+    "inputs": "i1,i2",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Unrealizable_Without_Env_Constraint",
+    "env": "true",
+    "sys": "G(i1 -> o1) & G(i2 -> !o1)",
+    "inputs": "i1,i2",
+    "outputs": "o1",
+    "expected": "Unrealizable"
+  },
+  {
+    "name": "Mutual_Exclusion_3_Inputs",
+    "env": "G(i1+i2+i3) & G(!i1 | !i2) & G(!i1 | !i3) & G(!i2 | !i3)",
+    "sys": "G(i1 -> o1) & G(i2 -> o1) & G(i3 -> !o1)",
+    "inputs": "i1,i2,i3",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Input_Past_Dependency",
+    "env": "G(i1 <-> X !i1)",
+    "sys": "G(i1 -> o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Slippery_Robot",
+    "env": "(r1 & c1) & G(c1 & r -> X c2) & G(c2 & l -> X c1)",
+    "sys": "G(l | r) & G(!(l & r)) & F c2",
+    "inputs": "r1,c1,c2",
+    "outputs": "l,r",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Vacuously_Realizable_Dead_Env",
+    "env": "G(i1) & G(!i1)",
+    "sys": "G(o1 & !o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Env_Forces_Unrealizability",
+    "env": "G(i1)",
+    "sys": "G(i1 -> (o1 & !o1))",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected": "Unrealizable"
+  },
+  {
+    "name": "Circular_Dependency_Unsat_Env",
+    "env": "G(i1 <-> !i2) & G(i2 <-> !i3) & G(i3 <-> !i1)",
+    "sys": "G(o1)",
+    "inputs": "i1,i2,i3",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Chain_of_Dependencies",
+    "env": "G(i1 -> X i2) & G(i2 -> X i3)",
+    "sys": "G(i3 -> o1)",
+    "inputs": "i1,i2,i3",
+    "outputs": "o1",
+    "expected": "Realizable"
+  },
+  {
+    "name": "Dependency_on_System_Output_Feedback",
+    "env": "G(o1 -> X i1)",
+    "sys": "G(i1 -> o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected": "Realizable"
+  }
+]
