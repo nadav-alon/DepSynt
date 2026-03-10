@@ -11,6 +11,8 @@ OUTPUT = """{id}
 {benchmark_name}
 {benchmark_family}
 {ltl_formula}
+{env_formula}
+{sys_formula}
 {input_vars}
 {output_vars}
 """
@@ -33,12 +35,16 @@ def analyize_tlsf_file(tlsf_path):
     input_vars = omit_spaces(os.popen('syfco {} -ins'.format(tlsf_path)).read()).lower()
     output_vars = omit_spaces(os.popen('syfco {} -outs'.format(tlsf_path)).read()).lower()
     ltl_formula = os.popen('syfco -f ltlxba -m fully {}'.format(tlsf_path)).read().strip()
+    env_formula = os.popen('syfco -f ltlxba -c asm {}'.format(tlsf_path)).read().strip()
+    sys_formula = os.popen('syfco -f ltlxba -c gar {}'.format(tlsf_path)).read().strip()
 
     return {
         "benchmark_name": benchmark_name,
         "input_vars": input_vars,
         "output_vars": output_vars,
         "ltl_formula": ltl_formula,
+        "env_formula": env_formula,
+        "sys_formula": sys_formula,
     }
 
 
