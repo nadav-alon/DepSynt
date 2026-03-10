@@ -168,3 +168,7 @@ submit_strix
 
 # Local build artifacts
 /libs/spot/inst/
+
+# Python
+*.pyc
+__pycache__/
