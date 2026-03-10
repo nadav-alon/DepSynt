@@ -140,28 +140,47 @@ def main():
         return
 
     for filepath in files:
-        benchmark = parse_benchmark_file(filepath)
-        if not benchmark:
-            continue
-        
-        print(f"=== Benchmark: {benchmark['name']} ({benchmark['family']}) ===")
-        data = run_find_deps(benchmark, args.tool)
-        if not data:
-            print("Failed to get dependency data.\n")
-            continue
-        
-        deps = data.get("dependency", {}).get("tested_dependencies", [])
-        input_deps = [d for d in deps if d.get("is_dependent")]
-        
-        print(f"Amount of input dependencies: {len(input_deps)}")
-        if input_deps:
-            print("Dependencies:")
-            for d in input_deps:
-                dep_set = d.get("tested_dependency_set", [])
-                print(f"  - Input '{d['name']}' depends on: {', '.join(dep_set) if dep_set else 'nothing (constant)'}")
+        benchmarks = []
+        if filepath.endswith('.json'):
+            try:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                    for entry in data:
+                        benchmarks.append({
+                            'name': entry.get('name', 'unknown'),
+                            'family': entry.get('family', 'verification_suite'),
+                            'formula': entry.get('sys', ''),
+                            'env_formula': entry.get('env', ''),
+                            'inputs': entry.get('inputs', ''),
+                            'outputs': entry.get('outputs', '')
+                        })
+            except Exception as e:
+                print(f"Error reading JSON {filepath}: {e}")
+                continue
         else:
-            print("No input dependencies found.")
-        print()
+            benchmark = parse_benchmark_file(filepath)
+            if benchmark:
+                benchmarks.append(benchmark)
+
+        for benchmark in benchmarks:
+            print(f"=== Benchmark: {benchmark['name']} ({benchmark['family']}) ===")
+            data = run_find_deps(benchmark, args.tool)
+            if not data:
+                print("Failed to get dependency data.\n")
+                continue
+            
+            deps = data.get("dependency", {}).get("tested_dependencies", [])
+            input_deps = [d for d in deps if d.get("is_dependent")]
+            
+            print(f"Amount of input dependencies: {len(input_deps)}")
+            if input_deps:
+                print("Dependencies:")
+                for d in input_deps:
+                    dep_set = d.get("tested_dependency_set", [])
+                    print(f"  - Input '{d['name']}' depends on: {', '.join(dep_set) if dep_set else 'nothing (constant)'}")
+            else:
+                print("No input dependencies found.")
+            print()
 
 if __name__ == "__main__":
     main()
