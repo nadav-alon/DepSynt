@@ -144,6 +144,19 @@ tasks:
       - ./scripts/slurm_task_gen.py --task=find_deps --timeout={{.FIND_DEPENDENCIES_TIMEOUT}} --benchmarks-path={{.GENERATED_BENCHMARK_PATH}}/text --output-path={{.FIND_DEPENDENCIES_PATH}} > submit_find_deps
       - sbatch submit_find_deps
 
+  # Benchmark Input Dependencies Report
+  bench:input_deps:
+    desc: Build and report input dependencies for a set of benchmarks
+    summary: |
+      Runs the tool to find input dependencies on a specified list of benchmarks and outputs a readable report.
+      Use `BENCHMARKS` variable to specify the path to the benchmarks (e.g. `task bench:input_deps BENCHMARKS=./tasks_output/generated_benchmarks/text`)
+    cmds:
+      - make find_dependencies
+      - chmod +x ./scripts/input_dep_report.py
+      - python3 ./scripts/input_dep_report.py {{.BENCHMARKS}}
+    vars:
+      BENCHMARKS: '{{default (print .GENERATED_BENCHMARK_PATH "/text") .BENCHMARKS}}'
+
   find_dependencies:summary:
     - rm -f {{.FIND_DEPENDENCIES_SUMMARY}}
     - chmod +x ./scripts/results_summarizer.py

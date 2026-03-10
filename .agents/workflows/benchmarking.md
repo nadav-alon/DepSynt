@@ -34,6 +34,10 @@ task generate_benchmarks
 ```
 This runs `scripts/tlsf_to_text.py` and stores the results in `./tasks_output/generated_benchmarks/text`.
 
+> [!WARNING]
+> **Worktree Caveat:** If you are operating in a git worktree, `task generate_benchmarks` will fail because git submodules (like `scripts/benchmarks/tlsf`) are typically only initialized in the main repository. 
+> To mitigate this, **ALWAYS** generate benchmarks from the main repository path (e.g., `cd /home/cowclaw/DepSynt-1 && task generate_benchmarks`), and then use or copy the generated files from its `tasks_output/generated_benchmarks/text` folder.
+
 ### 2. Adding or Updating Benchmarks
 The benchmark suite is dynamic. To add new benchmarks:
 - **TLSF Source**: Add new `.tlsf` files to the appropriate subdirectory in `scripts/benchmarks/`.
