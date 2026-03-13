@@ -37,6 +37,7 @@ struct SynthesisCLIOptions : public BaseCLIOptions {
     bool apply_model_checking;
     bool measure_bdd;
     std::string model_name;
+    std::string dependency_transducer_path;
 };
 
 struct FindUnatesCLIOptions : public BaseCLIOptions {

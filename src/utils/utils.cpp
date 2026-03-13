@@ -58,6 +58,10 @@ bool parse_synthesis_cli(int argc, const char *argv[],
         "measure-bdd",
         Options::bool_switch(&options.measure_bdd)->default_value(false),
         "Should measure the BDD size of NBAs"
+        )(
+        "dependency-transducer-path",
+        Options::value<string>(&options.dependency_transducer_path)->default_value(""),
+        "Path to save the dependency transducer strategy"
         );
 
     // Check if help is requested
@@ -226,6 +230,7 @@ std::ostream &operator<<(std::ostream &out, const SynthesisCLIOptions &options) 
         << (options.dependency_timeout <= 0) << endl;
     out << " - Find dependency dependencies timeout: "
         << options.dependency_timeout << endl;
+    out << " - Dependency transducer path: " << options.dependency_transducer_path << endl;
 
     return out;
 }

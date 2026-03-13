@@ -1,6 +1,7 @@
 #define _GLIBCXX_USE_NANOSLEEP
 #include <signal.h>
 #include <iostream>
+#include <fstream>
 #include <spot/twaalgos/aiger.hh>
 #include <vector>
 #include <memory>
@@ -162,6 +163,24 @@ int main(int argc, const char* argv[]) {
                                                   dependent_variables, bdd_to_bdd_without_deps);
             deps_strategy = dependents_synt.synthesis();
             synt_measure.end_dependents_synthesis(deps_strategy);
+
+            if (deps_strategy != nullptr && !options.dependency_transducer_path.empty()) {
+                std::ofstream out(options.dependency_transducer_path);
+                if (out.is_open()) {
+                    BLIF deps_blif(options.model_name + "deps_save");
+                    deps_blif.load_aig(deps_strategy);
+                    string deps_init_latch = deps_blif.find_latch_name_by_num(deps_strategy->latch_var(0));
+                    deps_blif.init_latch_to_one(deps_init_latch);
+                    auto aiger_to_save = deps_blif.to_aig(gi.dict);
+                    
+                    spot::print_aiger(out, aiger_to_save) << std::endl;
+                    out.close();
+                    verbose << "=> Saved dependency transducer to " << options.dependency_transducer_path << endl;
+                } else {
+                    cerr << "Error: Could not open file for dependency transducer: " << options.dependency_transducer_path << endl;
+                }
+            }
+
         }
 
         // Check Realizability of dependent variables
