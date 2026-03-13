@@ -215,12 +215,13 @@ tasks:
       - chmod +x ./scripts/remove_skipped_synt.sh
       - ./scripts/remove_skipped_synt.sh {{.CLEAN_PATH}}
 
-  # HPC Remote Workflow
   hpc:sync:
     desc: Sync local code and benchmarks to HPC via rsync
     cmds:
+      - task: generate_benchmarks
+      - mkdir -p .bin && [ -f ./.bin/task ] || curl -sL https://taskfile.dev/install.sh | sh -s -- -b ./.bin
       - ssh {{.HPC_HOST}} "mkdir -p {{.HPC_REMOTE_DIR}}"
-      - rsync -avz --exclude '.git/' --exclude 'build/' --exclude 'libs/' --exclude 'tasks_output/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
+      - rsync -avz --exclude 'build/' --exclude 'libs/' --exclude 'tasks_output/strix/' --exclude 'tasks_output/depsynt/' --exclude 'tasks_output/depsynt-measures/' --exclude 'tasks_output/find_deps/' --exclude 'tasks_output/find_deps_formula/' --exclude 'tasks_output/spot_modular/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
 
   hpc:build:
     desc: Build the project on HPC using sbatch hpc_build.sh
@@ -231,12 +232,12 @@ tasks:
   hpc:run:depsynt:
     desc: Submit Slurm jobs for depsynt on HPC
     cmds:
-      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && task generate_benchmarks && task depsynt BENCHMARKS_FAMALIES='{{.BENCHMARKS_FAMALIES}}'"
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task depsynt BENCHMARKS_FAMALIES='{{.BENCHMARKS_FAMALIES}}'"
 
   hpc:run:find_deps:
     desc: Submit Slurm jobs for find_dependencies on HPC
     cmds:
-      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && task generate_benchmarks && task find_dependencies"
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task find_dependencies"
 
   hpc:monitor:
     desc: Polling squeue to check if jobs are still running
@@ -276,7 +277,7 @@ tasks:
         echo "Preparing HPC results for Cactus plot..."
         mkdir -p ./tasks_output
         cp ./tasks_output_hpc/*.csv ./tasks_output/
-        python -m scripts.generate_cactus
+        python3 -m scripts.generate_cactus
         echo "Cactus plot generated (likely as cactus-*.png)"
 
   hpc:visualize:

@@ -172,3 +172,5 @@ submit_strix
 # Python
 *.pyc
 __pycache__/
+
+.bin/
