@@ -16,10 +16,12 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
     Options::options_description desc("Input Dependencies Synthesis Options", 100);
     parse_cli_common(options, desc, false);
     desc.add_options()
-        ("env-formula,e", Options::value<string>(&options.env_formula)->required(),
+        ("env-formula,e", Options::value<string>(&options.env_formula),
          "Environment formula")
-        ("system-formula,s", Options::value<string>(&options.system_formula)->required(),
+        ("system-formula,s", Options::value<string>(&options.system_formula),
          "System formula")
+        ("formula,f", Options::value<string>(&options.formula),
+         "Generic formula")
         ("measure-bdd,m", Options::bool_switch(&options.measure_bdd)->default_value(false),
          "Measure BDD")
         ("dependency-timeout,t", Options::value<int>(&options.dependency_timeout)->default_value(60000),
@@ -49,6 +51,21 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
 
         Options::variables_map vm;
         Options::store(parsed_options, vm);
+
+        if (vm.count("formula")) {
+            if (vm.count("env-formula") || vm.count("system-formula")) {
+                cerr << "Error: Cannot provide both --formula and --env-formula/--system-formula" << endl;
+                cerr << desc << endl;
+                return false;
+            }
+        } else {
+            if (!vm.count("env-formula") || !vm.count("system-formula")) {
+                cerr << "Error: Must provide either --formula OR both --env-formula and --system-formula" << endl;
+                cerr << desc << endl;
+                return false;
+            }
+        }
+
         Options::notify(vm);
 
         if (vm.count("algorithm")) {
@@ -89,8 +106,12 @@ std::string inp_dep_algorithm_to_string(Inp_Dep_Algorithm algo) {
 }
 
 std::ostream &operator<<(std::ostream &out, const InputDependenciesCLIOptions &options) {
-    out << "Environment Formula: " << options.env_formula << endl;
-    out << "System Formula: " << options.system_formula << endl;
+    if (!options.formula.empty()) {
+        out << "Formula: " << options.formula << endl;
+    } else {
+        out << "Environment Formula: " << options.env_formula << endl;
+        out << "System Formula: " << options.system_formula << endl;
+    }
     out << "Verbose: " << options.verbose << endl;
     out << "Inputs: " << options.inputs << endl;
     out << "Outputs: " << options.outputs << endl;
