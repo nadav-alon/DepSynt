@@ -14,6 +14,8 @@
 #include <spot/twaalgos/translate.hh>
 #include "synthesis.h"
 #include "synthesis_utils.h"
+#include "ultra_naive_algorithm.h"
+#include "naive_algorithm.h"
 
 using namespace std;
 
@@ -200,11 +202,68 @@ void test_input_dep_echoes_o()
     cout << "PASSED\n";
 }
 
+// ── Test 4 ──────────────────────────────────────────────────────────────────
+// Slippery Synthesis Benchmark
+// Verified with Ultra Naive, Naive, and Naive Projected algorithms.
+// Includes model checking of the generated strategy.
+void test_slippery_synthesis()
+{
+    cout << "test_slippery_synthesis ... ";
+
+    Inp_Dep_Algorithm algorithms[] = {
+        Inp_Dep_Algorithm::ULTRA_NAIVE,
+        Inp_Dep_Algorithm::NAIVE,
+        Inp_Dep_Algorithm::NAIVE_PROJECTED
+    };
+
+    for (auto algo : algorithms) {
+        InputDependenciesCLIOptions opts;
+        opts.env_formula = "(r1 & c1) & G(c1 & r -> X c2) & G(c2 & l -> X c1)";
+        opts.system_formula = "G(l | r) & G(!(l & r)) & F c2";
+        opts.inputs = "r1,c1,c2";
+        opts.outputs = "l,r";
+        opts.verbose = false;
+        opts.algorithm = algo;
+        opts.apply_model_checking = false;
+        opts.dependency_timeout = 60000;
+
+        spot::aig_ptr strategy = nullptr;
+        SynthesisMeasure* measure = nullptr;
+
+        int result;
+        if (algo == Inp_Dep_Algorithm::ULTRA_NAIVE) {
+            result = ultra_naive(opts, strategy, measure);
+        } else {
+            result = naive(opts, strategy, measure, algo == Inp_Dep_Algorithm::NAIVE_PROJECTED);
+        }
+
+        REQUIRE(result == EXIT_SUCCESS, "Synthesis failed for slippery benchmark");
+        REQUIRE(strategy != nullptr, "Strategy is null for slippery benchmark");
+
+        // Model Checking: Verify strategy satisfies (env -> sys)
+        auto strategy_aut = strategy->as_automaton(false);
+        spot::parsed_formula pf_env = spot::parse_infix_psl(opts.env_formula);
+        spot::parsed_formula pf_sys = spot::parse_infix_psl(opts.system_formula);
+        spot::formula full_formula = spot::formula::Implies(pf_env.f, pf_sys.f);
+        spot::formula neg_formula = spot::formula::Not(full_formula);
+
+        spot::translator trans(strategy_aut->get_dict());
+        auto neg_aut = trans.run(neg_formula);
+
+        REQUIRE(!neg_aut->intersects(strategy_aut), "Strategy violates the specification");
+
+        if (measure) delete measure;
+    }
+
+    cout << "PASSED\n";
+}
+
 int main() {
     try {
         test_no_dep_independent();
         test_no_input_dep();
         test_input_dep_echoes_o();
+        test_slippery_synthesis();
         cout << "\nAll tests passed!" << endl;
     } catch (const exception& e) {
         cerr << "Test failed with exception: " << e.what() << endl;

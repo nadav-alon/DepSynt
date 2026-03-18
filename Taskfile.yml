@@ -29,11 +29,6 @@ vars:
   HPC_HOST: login
   HPC_REMOTE_DIR: work/DepSynt
 
-  SLIPPERY_ENV: "(r1 & c1) & G(c1 & r -> X c2) & G(c2 & l -> X c1)"
-  SLIPPERY_SYS: "G(l | r) & G(!(l & r)) & F c2"
-  SLIPPERY_INS: "r1,c1,c2"
-  SLIPPERY_OUTS: "l,r"
-
 tasks:
   # Input Dependencies Tests
   inp_dep_tests:
@@ -41,26 +36,6 @@ tasks:
     cmds:
       - make inp_dep_tests
       - ./inp_dep_tests
-
-  # Input Dependencies Synthesis
-  inp_dep_synthesis:ultra_naive:
-    desc: Build and run a test case for Input Dependencies Synthesis
-    cmds:
-      - make inp_dep_synthesis
-      - ./inp_dep_synthesis -e '{{.SLIPPERY_ENV}}' -s '{{.SLIPPERY_SYS}}' --input '{{.SLIPPERY_INS}}' --output '{{.SLIPPERY_OUTS}}' --verbose --algorithm ultra_naive
-
-  # Input Dependencies Synthesis
-  inp_dep_synthesis:naive:
-    desc: Build and run a test case for Input Dependencies Synthesis
-    cmds:
-      - make inp_dep_synthesis
-      - ./inp_dep_synthesis -e '{{.SLIPPERY_ENV}}' -s '{{.SLIPPERY_SYS}}' --input '{{.SLIPPERY_INS}}' --output '{{.SLIPPERY_OUTS}}' --verbose --algorithm naive
-
-  inp_dep_synthesis:naive_projected:
-    desc: Build and run a test case for Input Dependencies Synthesis
-    cmds:
-      - make inp_dep_synthesis
-      - ./inp_dep_synthesis -e '{{.SLIPPERY_ENV}}' -s '{{.SLIPPERY_SYS}}' --input '{{.SLIPPERY_INS}}' --output '{{.SLIPPERY_OUTS}}' --verbose --algorithm naive_projected
 
   # Synthesis
   depsynt:
