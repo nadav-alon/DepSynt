@@ -35,6 +35,13 @@ vars:
   SLIPPERY_OUTS: "l,r"
 
 tasks:
+  # Input Dependencies Tests
+  inp_dep_tests:
+    desc: Build and run the input dependencies unit tests
+    cmds:
+      - make inp_dep_tests
+      - ./inp_dep_tests
+
   # Input Dependencies Synthesis
   inp_dep_synthesis:ultra_naive:
     desc: Build and run a test case for Input Dependencies Synthesis

@@ -26,55 +26,29 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     gi.s = spot::synthesis_info::algo::SPLIT_DET;
     gi.minimize_lvl = 2;  // i.e, simplication level
 
-    SynthesisCLIOptions dependant_synthesis_opts;
+    vector<string> inputs_vec, outputs_vec;
+    extract_variables(options.inputs, inputs_vec);
+    extract_variables(options.outputs, outputs_vec);
 
-    dependant_synthesis_opts.formula = options.env_formula;
-    dependant_synthesis_opts.inputs = options.outputs;
-    dependant_synthesis_opts.outputs = options.inputs;
-    dependant_synthesis_opts.verbose = options.verbose;
-    dependant_synthesis_opts.measures_path = options.measures_path;
-
-    dependant_synthesis_opts.merge_strategies = true;
-    dependant_synthesis_opts.apply_model_checking = options.apply_model_checking;
-    dependant_synthesis_opts.measure_bdd = options.measure_bdd;
-    dependant_synthesis_opts.skip_unates = true;
-    dependant_synthesis_opts.dependency_timeout = options.dependency_timeout;
-
-    auto* dependent_instance = new SyntInstance(options.outputs, options.inputs, dependant_synthesis_opts.formula);
-
-    measure = new InpDepSyntMeasure(*dependent_instance, options.measure_bdd, false);
+    auto* dummy_instance = new SyntInstance(inputs_vec, outputs_vec, options.system_formula);
+    measure = new InpDepSyntMeasure(*dummy_instance, options.measure_bdd, false);
     InpDepSyntMeasure& dependent_measure = static_cast<InpDepSyntMeasure&>(*measure);
-
     dependent_measure.set_measure_bdd(options.measure_bdd);
 
     final_strategy = nullptr;
 
-
-    twa_graph_ptr deps_nba = get_nba_for_synthesis(
-        dependent_instance->get_formula_parsed(), 
-        gi, 
+    twa_graph_ptr deps_nba = nullptr;
+    twa_graph_ptr deps_strategy_aut = nullptr;
+    auto dep_realizable = get_inp_dep_transducer(
+        options.env_formula, 
+        inputs_vec, 
+        outputs_vec, 
+        options, 
         dependent_measure, 
-        verbose
+        verbose, 
+        deps_nba,
+        deps_strategy_aut
     );
-
-    twa_graph_ptr deps_strategy_aut = nullptr; 
-
-
-    vector<string> independent_variables;
-    vector<string> dependent_variables;
-
-    auto output_vars = dependent_instance->get_output_vars();
-
-    auto dep_realizable = decompose_synthesis_only_dependents_as_aut(dependant_synthesis_opts,
-                                               dependent_measure,
-                                               gi,
-                                               *dependent_instance,
-                                               deps_nba,
-                                               output_vars,
-                                               verbose,
-                                               deps_strategy_aut,
-                                               independent_variables,
-                                               dependent_variables);
 
     if (!dep_realizable) {
         return EXIT_FAILURE;
