@@ -15,6 +15,7 @@ std::string inp_dep_algorithm_to_string(Inp_Dep_Algorithm algo);
 struct InputDependenciesCLIOptions: public BaseCLIOptions {
     std::string env_formula;
     std::string system_formula;
+    std::string formula;
     bool measure_bdd;
     Inp_Dep_Algorithm algorithm;
     int dependency_timeout;
