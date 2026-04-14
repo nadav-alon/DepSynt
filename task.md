@@ -8,8 +8,9 @@ The naive algorithm, both projection based and non projection based, should be u
 As an addition, the dependantSynthesis likely needs to be updated as well, as it is geared toward output dependencies. It should probably have a copy as well, and that copy should be used by both substitution based and casual based dependencies.
 
 ## Status
-- [ ] Design Drafted
-- [ ] Design Approved
+- [x] Design Drafted
+- [x] Design Approved
+- [x] Implementation Started
 - [ ] Phase 1: XO Substitution Baseline
 - [ ] Phase 2: FindInputDepsByAutomaton
 - [ ] Phase 3: InputDependentsSynthesiser

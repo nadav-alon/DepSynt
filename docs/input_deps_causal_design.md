@@ -13,7 +13,7 @@ However, output dependency discovery assumes that outputs at step $t$ can depend
 
 ## Proposed Solutions
 
-### 1. XO Substitution Hack (Baseline)
+### 1. XO Substitution Hack (Removed)
 This hack "shifts" the system outputs to the future from the environment's perspective.
 - Transform $\phi_{env}(I, O)$ into $\phi_{env}(I, XO)$.
 - This ensures that any dependency discovered for $I_t$ can only involve $O_{t+1}, O_{t+2}, \dots$ (which practically means it won't depend on $O_t$).

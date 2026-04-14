@@ -40,7 +40,8 @@ void prepare_nba_for_decomposition(
     const vector<string>& dependent_variables,
     spot::twa_graph_ptr& nba_with_deps,
     spot::twa_graph_ptr& nba_without_deps,
-    unordered_map<int, bdd>& bdd_to_bdd_without_deps);
+    unordered_map<int, bdd>& bdd_to_bdd_without_deps,
+    const vector<string>& ignored_vars);
 
 
 /**
@@ -112,6 +113,40 @@ bool decompose_synthesis_only_dependents_as_aut(
     SyntInstance& synt_instance,
     spot::twa_graph_ptr& nba,
     vector<string>& input_vars,
+    ostream& verbose,
+    spot::twa_graph_ptr& deps_strategy_aut,
+    vector<string>& independent_variables,
+    vector<string>& dependent_variables);
+
+void find_input_dependencies_in_decomposition(
+    SynthesisCLIOptions& options,
+    SynthesisMeasure& synt_measure,
+    SyntInstance& synt_instance,
+    spot::twa_graph_ptr& nba,
+    ostream& verbose,
+    vector<string>& independent_variables,
+    vector<string>& dependent_variables,
+    const vector<string>& ignored_vars);
+
+bool synthesise_input_dependents(
+    SynthesisCLIOptions& options,
+    SynthesisMeasure& synt_measure,
+    spot::twa_graph_ptr nba_without_deps,
+    spot::twa_graph_ptr nba_with_deps,
+    vector<string>& input_vars,
+    vector<string>& independent_variables,
+    vector<string>& dependent_variables,
+    unordered_map<int, bdd>& bdd_to_bdd_without_deps,
+    spot::aig_ptr& deps_strategy);
+
+bool decompose_synthesis_only_input_dependents_as_aut(
+    SynthesisCLIOptions& options,
+    SynthesisMeasure& synt_measure,
+    spot::synthesis_info& gi,
+    SyntInstance& synt_instance,
+    spot::twa_graph_ptr& nba,
+    vector<string>& input_vars,
+    vector<string>& output_vars,
     ostream& verbose,
     spot::twa_graph_ptr& deps_strategy_aut,
     vector<string>& independent_variables,

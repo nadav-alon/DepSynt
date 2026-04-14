@@ -6,7 +6,10 @@
 #include "synthesis.h"
 #include "synthesis_utils.h"
 #include <spot/twaalgos/product.hh>
+#include <spot/tl/relabel.hh>
+#include <spot/tl/parse.hh>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -40,9 +43,9 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     dependant_synthesis_opts.skip_unates = true;
     dependant_synthesis_opts.dependency_timeout = options.dependency_timeout;
 
-    auto* dependent_instance = new SyntInstance(options.outputs, options.inputs, dependant_synthesis_opts.formula);
+    auto* synt_instance = new SyntInstance(options.outputs, options.inputs, dependant_synthesis_opts.formula);
 
-    measure = new InpDepSyntMeasure(*dependent_instance, options.measure_bdd, false);
+    measure = new InpDepSyntMeasure(*synt_instance, options.measure_bdd, false);
     InpDepSyntMeasure& dependent_measure = static_cast<InpDepSyntMeasure&>(*measure);
 
     dependent_measure.set_measure_bdd(options.measure_bdd);
@@ -51,7 +54,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
 
 
     twa_graph_ptr deps_nba = get_nba_for_synthesis(
-        dependent_instance->get_formula_parsed(), 
+        synt_instance->get_formula_parsed(), 
         gi, 
         dependent_measure, 
         verbose
@@ -63,18 +66,25 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     vector<string> independent_variables;
     vector<string> dependent_variables;
 
-    auto output_vars = dependent_instance->get_output_vars();
+    vector<string> ignored_vars;
+    extract_variables(options.outputs, ignored_vars);
 
-    auto dep_realizable = decompose_synthesis_only_dependents_as_aut(dependant_synthesis_opts,
-                                               dependent_measure,
-                                               gi,
-                                               *dependent_instance,
-                                               deps_nba,
-                                               output_vars,
-                                               verbose,
-                                               deps_strategy_aut,
-                                               independent_variables,
-                                               dependent_variables);
+    auto output_vars = synt_instance->get_output_vars();
+    auto input_vars = synt_instance->get_input_vars();
+
+    bool dep_realizable;
+        dep_realizable = decompose_synthesis_only_input_dependents_as_aut(dependant_synthesis_opts,
+                                                   dependent_measure,
+                                                   gi,
+                                                   *synt_instance,
+                                                   deps_nba,
+                                                   input_vars,
+                                                   output_vars,
+                                                   verbose,
+                                                   deps_strategy_aut,
+                                                   independent_variables,
+                                                   dependent_variables
+                                                   );
 
     if (!dep_realizable) {
         return EXIT_FAILURE;
