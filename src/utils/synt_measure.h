@@ -20,6 +20,7 @@ struct TestedVariable {
     string name;
     Duration duration;
     bool is_dependent;
+    bool is_constant;
     vector<string> tested_dependency_set;
 };
 
@@ -119,6 +120,7 @@ public:
     void start_testing_variable(string &var);
 
     void end_testing_variable(bool is_dependent,
+                              bool is_constant,
                               vector<string> &tested_dependency_set);
 };
 

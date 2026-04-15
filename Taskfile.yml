@@ -151,9 +151,15 @@ tasks:
       Runs the tool to find input dependencies on a specified list of benchmarks and outputs a readable report.
       Use `BENCHMARKS` variable to specify the path to the benchmarks (e.g. `task bench:input_deps BENCHMARKS=./tasks_output/generated_benchmarks/text`)
     cmds:
-      - make find_dependencies
+      - make find_input_dependencies
       - chmod +x ./scripts/input_dep_report.py
-      - python3 ./scripts/input_dep_report.py {{.BENCHMARKS}}
+      - python3 ./scripts/input_dep_report.py {{.BENCHMARKS}} --tool ./find_input_dependencies
+
+  bench:input_deps:test:
+    desc: Run input dependency discovery on the verification test suite
+    cmds:
+      - task: bench:input_deps
+        vars: { BENCHMARKS: "src/inputDependencies/benchmarks/input_deps_test_suite.json" }
     vars:
       BENCHMARKS: '{{default (print .GENERATED_BENCHMARK_PATH "/text") .BENCHMARKS}}'
 

@@ -134,10 +134,12 @@ bool synthesise_input_dependents(
     spot::twa_graph_ptr nba_without_deps,
     spot::twa_graph_ptr nba_with_deps,
     vector<string>& input_vars,
+    vector<string>& output_vars,
     vector<string>& independent_variables,
     vector<string>& dependent_variables,
     unordered_map<int, bdd>& bdd_to_bdd_without_deps,
-    spot::aig_ptr& deps_strategy);
+    spot::aig_ptr& deps_strategy,
+    const vector<string>& ignored_vars);
 
 bool decompose_synthesis_only_input_dependents_as_aut(
     SynthesisCLIOptions& options,
@@ -150,7 +152,8 @@ bool decompose_synthesis_only_input_dependents_as_aut(
     ostream& verbose,
     spot::twa_graph_ptr& deps_strategy_aut,
     vector<string>& independent_variables,
-    vector<string>& dependent_variables);
+    vector<string>& dependent_variables,
+    const vector<string>& ignored_vars);
 
 
 int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, SynthesisMeasure& synt_measure, spot::aig_ptr& final_strategy, spot::twa_graph_ptr precalc_nba = nullptr);

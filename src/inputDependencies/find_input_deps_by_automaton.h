@@ -23,7 +23,6 @@ class FindInputDepsByAutomaton {
     std::atomic<bool> m_stop_flag;
     std::atomic<bool> m_is_done;
     std::vector<std::string> m_ignored_vars;
-    bdd m_ignored_vars_bdd;
 
     bool is_variable_dependent(std::string dependent_var,
                                std::vector<std::string>& dependency_vars,
@@ -43,6 +42,8 @@ class FindInputDepsByAutomaton {
 
     bool get_all_compatible_states(std::vector<PairState>& pairStates,
                                    const spot::twa_graph_ptr& aut);
+
+    bool is_global_constant(const std::string& var, bool& value_dst);
 
    public:
     explicit FindInputDepsByAutomaton(SyntInstance& synt_instance,
@@ -65,10 +66,7 @@ class FindInputDepsByAutomaton {
 
         m_bdd_cacher = new BDDVarsCacher(m_automaton);
 
-        m_ignored_vars_bdd = bddtrue;
-        for (const auto& var : m_ignored_vars) {
-            m_ignored_vars_bdd &= bdd_ithvar(m_automaton->register_ap(var));
-        }
+        m_bdd_cacher = new BDDVarsCacher(m_automaton);
     }
 
     ~FindInputDepsByAutomaton() {

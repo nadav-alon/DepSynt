@@ -46,10 +46,10 @@ void FindDepsByAutomaton::find_dependencies(vector<string>& dependent_variables,
         if (FindDepsByAutomaton::is_variable_dependent(dependent_var, dependency_set,
                                                        compatibleStates, use_single_bdd)) {
             dependent_variables.push_back(dependent_var);
-            m_measures.end_testing_variable(true, dependency_set);
+            m_measures.end_testing_variable(true, false, dependency_set);
         } else {
             independent_variables.push_back(dependent_var);
-            m_measures.end_testing_variable(false, dependency_set);
+            m_measures.end_testing_variable(false, false, dependency_set);
         }
     }
 

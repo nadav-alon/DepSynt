@@ -47,10 +47,15 @@ void FindInputDepsByAutomaton::find_dependencies(vector<string>& dependent_varia
         if (this->is_variable_dependent(dependent_var, dependency_set,
                                         compatibleStates, use_single_bdd)) {
             dependent_variables.push_back(dependent_var);
-            m_measures.end_testing_variable(true, dependency_set);
+            bool is_const = false;
+            if (dependency_set.empty()) {
+                bool val;
+                is_const = is_global_constant(dependent_var, val);
+            }
+            m_measures.end_testing_variable(true, is_const, dependency_set);
         } else {
             independent_variables.push_back(dependent_var);
-            m_measures.end_testing_variable(false, dependency_set);
+            m_measures.end_testing_variable(false, false, dependency_set);
         }
     }
 
@@ -224,9 +229,7 @@ bool FindInputDepsByAutomaton::get_all_compatible_states(std::vector<PairState>&
                 if(t1.dst == t2.dst) {
                     queue.emplace_back(newState);
                 } else {
-                    bdd causal_cond1 = bdd_exist(t1.cond, m_ignored_vars_bdd);
-                    bdd causal_cond2 = bdd_exist(t2.cond, m_ignored_vars_bdd);
-                    if ((causal_cond1 & causal_cond2) != bddfalse) {
+                    if ((t1.cond & t2.cond) != bddfalse) {
                         queue.emplace_back(newState);
                     }
                 }
@@ -235,4 +238,38 @@ bool FindInputDepsByAutomaton::get_all_compatible_states(std::vector<PairState>&
     }
 
     return queue.empty() && !m_stop_flag.load();
+}
+
+bool FindInputDepsByAutomaton::is_global_constant(const std::string& var, bool& value_dst) {
+    int var_num = m_bdd_cacher->get_variable_index(const_cast<std::string&>(var));
+    bdd var_bdd = bdd_ithvar(var_num);
+    
+    bool first = true;
+    bool found_value = false;
+
+    for (unsigned s = 0; s < m_automaton->num_states(); ++s) {
+        for (auto& edge : m_automaton->out(s)) {
+            // Check if this transition allows var=true
+            if ((edge.cond & var_bdd) != bddfalse) {
+                if (first) {
+                    found_value = true;
+                    first = false;
+                } else if (!found_value) {
+                    return false; // Found both true and false
+                }
+            }
+            // Check if this transition allows var=false
+            if ((edge.cond & !var_bdd) != bddfalse) {
+                if (first) {
+                    found_value = false;
+                    first = false;
+                } else if (found_value) {
+                    return false; // Found both true and false
+                }
+            }
+        }
+    }
+    
+    value_dst = found_value;
+    return !first;
 }

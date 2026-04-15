@@ -83,7 +83,8 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
                                                    verbose,
                                                    deps_strategy_aut,
                                                    independent_variables,
-                                                   dependent_variables
+                                                   dependent_variables,
+                                                   ignored_vars
                                                    );
 
     if (!dep_realizable) {

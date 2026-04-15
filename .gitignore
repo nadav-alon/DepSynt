@@ -89,6 +89,7 @@ synthesis
 depsynt
 inp_dep_synthesis
 simulate_aiger
+find_input_dependencies
 
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Simple_Constant",
+    "env": "G(i1)",
+    "sys": "G(o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected_deps": ["i1"]
+  },
+  {
+    "name": "Simple_Equality",
+    "env": "G(i1 <-> i2)",
+    "sys": "G(o1)",
+    "inputs": "i1,i2",
+    "outputs": "o1",
+    "expected_deps_options": [["i1"], ["i2"]]
+  },
+  {
+    "name": "Temporal_Dependency",
+    "env": "i2 & G(i1 <-> X i2)",
+    "sys": "G(o1)",
+    "inputs": "i1,i2",
+    "outputs": "o1",
+    "expected_deps": ["i2"]
+  },
+  {
+    "name": "Causality_Check_Reactive_Independent",
+    "env": "G(i1 <-> o1)",
+    "sys": "G(o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected_deps": []
+  },
+  {
+    "name": "Causality_Check_Past_Output_Dependent",
+    "env": "i1 & G(X i1 <-> o1)",
+    "sys": "G(o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected_deps": ["i1"]
+  },
+  {
+    "name": "Mutual_Exclusion",
+    "env": "G(i1 ^ i2)",
+    "sys": "G(o1)",
+    "inputs": "i1,i2",
+    "outputs": "o1",
+    "expected_deps_options": [["i1"], ["i2"]]
+  },
+  {
+    "name": "Chain_of_Dependencies",
+    "env": "G(i1 <-> i2) & G(i2 <-> i3)",
+    "sys": "G(o1)",
+    "inputs": "i1,i2,i3",
+    "outputs": "o1",
+    "expected_deps_options": [["i3", "i2"], ["i1", "i2"], ["i1", "i3"]]
+  },
+  {
+    "name": "Goal_Adds_Dependency",
+    "env": "true",
+    "sys": "!G(i1 <-> i2)",
+    "inputs": "i1,i2",
+    "outputs": "o1",
+    "expected_deps_options": [["i1"], ["i2"]]
+  },
+  {
+    "name": "Environment_Deadlock",
+    "env": "G(i1) & G(!i1)",
+    "sys": "G(o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected_deps": ["i1"]
+  },
+  {
+    "name": "Independent_Variables",
+    "env": "G(i1 | !i1)",
+    "sys": "G(o1)",
+    "inputs": "i1",
+    "outputs": "o1",
+    "expected_deps": []
+  }
+]
