@@ -9,6 +9,10 @@
 #include "synthesis_utils.h"
 #include "synt_measure.h"
 #include "utils.h"
+#include "input_dependents_synthesiser.h"
+#include "nba_utils.h"
+#include <fstream>
+#include <spot/twaalgos/aiger.hh>
 
 namespace Options = boost::program_options;
 using namespace std;
@@ -82,6 +86,38 @@ int main(int argc, const char* argv[]) {
 
         cout << "Input Dependent Variables: " << dependent_variables << endl;
         cout << "Input Independent Variables: " << independent_variables << endl;
+
+        if (!options.dependency_transducer_path.empty() && !dependent_variables.empty()) {
+            verbose_out << "Synthesizing input dependency transducer..." << endl;
+            
+            spot::twa_graph_ptr nba_with_deps = clone_nba(automaton);
+            spot::twa_graph_ptr nba_without_deps = automaton;
+            unordered_map<int, bdd> bdd_to_bdd_without_deps;
+            
+            remove_ap_from_automaton(nba_without_deps, dependent_variables, bdd_to_bdd_without_deps);
+            
+            vector<string> input_vars;
+            extract_variables(options.inputs, input_vars);
+            
+            InputDependentsSynthesiser synthesis(
+                nba_without_deps,
+                nba_with_deps,
+                input_vars,
+                outputs, // these are system outputs in the negated formula's POV
+                independent_variables,
+                dependent_variables,
+                bdd_to_bdd_without_deps
+            );
+            
+            spot::aig_ptr strategy = synthesis.synthesis();
+            if (strategy) {
+                verbose_out << "Saving transducer to " << options.dependency_transducer_path << endl;
+                std::ofstream aiger_file(options.dependency_transducer_path);
+                spot::print_aiger(aiger_file, strategy) << endl;
+            } else {
+                cerr << "Error: Failed to synthesize input dependency transducer." << endl;
+            }
+        }
 
         synt_measures->completed();
         dump_measures(*synt_measures, options);

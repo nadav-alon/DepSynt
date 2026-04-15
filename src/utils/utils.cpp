@@ -135,7 +135,10 @@ bool parse_find_dependencies_cli(int argc, const char *argv[],
         "find-input-only",
         Options::bool_switch(&options.find_input_dependencies)->default_value(false),
         "Search for input dependent variables instead of output dependent "
-        "variables");
+        "variables")(
+        "dependency-transducer-path",
+        Options::value<string>(&options.dependency_transducer_path)->default_value(""),
+        "Path to save the dependency transducer strategy");
 
     try {
         Options::command_line_parser parser{argc, argv};
@@ -216,6 +219,7 @@ std::ostream &operator<<(std::ostream &out,
     out << " - Algorithm: " << algorithm_to_string(options.algorithm) << endl;
     out << " - Type of dependent variables: "
         << (options.find_input_dependencies ? "input" : "output") << endl;
+    out << " - Dependency transducer path: " << options.dependency_transducer_path << endl;
 
     return out;
 }

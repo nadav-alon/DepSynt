@@ -46,6 +46,7 @@ struct FindUnatesCLIOptions : public BaseCLIOptions {
 struct FindDependenciesCLIOptions : public BaseCLIOptions {
     Algorithm algorithm{UNKNOWN};
     bool find_input_dependencies{};
+    std::string dependency_transducer_path;
 };
 
 void parse_cli_common(BaseCLIOptions &options, boost::program_options::options_description &desc, bool formula_required = true);

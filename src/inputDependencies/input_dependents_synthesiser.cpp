@@ -32,7 +32,7 @@ void InputDependentsSynthesiser::init_aiger() {
     std::copy(m_output_vars.begin(), m_output_vars.end(),
               std::back_inserter(aiger_inputs));
 
-    unsigned num_latches = m_nba_with_deps->num_states();
+    unsigned num_latches = m_nba_with_deps->num_states() + 1;
     m_aiger = std::make_shared<aig>(aiger_inputs, m_dep_vars, num_latches,
                                     m_nba_with_deps->get_dict());
 
@@ -66,11 +66,17 @@ void InputDependentsSynthesiser::define_next_latches() {
         State dst = trans_to_dst.first;
         auto& trans = trans_to_dst.second;
 
+        Gate started_gate = m_aiger->latch_var(m_nba_without_deps->num_states());
+        State init_state = m_nba_without_deps->get_init_state_number();
+
         vector<Gate> next_latch_conds;
         for (auto& src_and_cond : trans) {
-            State src_gate = m_aiger->latch_var(src_and_cond.first);
+            Gate src_latch = m_aiger->latch_var(src_and_cond.first);
+            Gate is_in_src = (src_and_cond.first == init_state) 
+                ? m_aiger->aig_or(src_latch, m_aiger->aig_not(started_gate))
+                : src_latch;
             Gate cond_gate = src_and_cond.second;
-            next_latch_conds.emplace_back(m_aiger->aig_and(src_gate, cond_gate));
+            next_latch_conds.emplace_back(m_aiger->aig_and(is_in_src, cond_gate));
         }
 
         Gate next_latch_gate;
@@ -82,6 +88,9 @@ void InputDependentsSynthesiser::define_next_latches() {
         }
         m_aiger->set_next_latch(dst, next_latch_gate);
     }
+
+    // Set next for the 'started' latch
+    m_aiger->set_next_latch(m_nba_without_deps->num_states(), m_aiger->aig_true());
 
     for (State state = 0; state < m_nba_without_deps->num_states(); state++) {
         if (dst_transitions.find(state) == dst_transitions.end()) {
@@ -110,8 +119,15 @@ void InputDependentsSynthesiser::define_output_gates() {
                 bdd cond_without_deps = m_bdd_to_bdd_without_deps[transition.cond.id()];
                 bdd causal_cond_without_deps = bdd_exist(cond_without_deps, m_output_vars_bdd);
 
+                Gate started_gate = m_aiger->latch_var(m_nba_with_deps->num_states());
+                State init_state = m_nba_with_deps->get_init_state_number();
+                Gate src_latch = m_aiger->latch_var(src);
+                Gate is_in_src = (src == init_state)
+                    ? m_aiger->aig_or(src_latch, m_aiger->aig_not(started_gate))
+                    : src_latch;
+
                 std::vector<unsigned> dependent_edge_cond = {
-                    m_aiger->latch_var(src),
+                    is_in_src,
                     m_aiger->bdd2INFvar(causal_cond_without_deps),
                     partial_impl
                 };
