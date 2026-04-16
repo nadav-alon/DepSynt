@@ -21,6 +21,7 @@ FILE(GLOB non_executable_SRC ${PROJECT_SOURCE_DIR}/src/**/*.cpp)
 FILE(GLOB aiger_lib_SRC ${PROJECT_SOURCE_DIR}/libs/aiger/*.c)
 
 add_executable(find_dependencies ${non_executable_SRC} ${aiger_lib_SRC} bins/find_dependencies.cpp)
+add_executable(find_input_dependencies ${non_executable_SRC} ${aiger_lib_SRC} bins/find_input_dependencies.cpp)
 add_executable(depsynt ${non_executable_SRC} ${aiger_lib_SRC} bins/synthesis.cpp)
 add_executable(inp_dep_synthesis ${non_executable_SRC} ${aiger_lib_SRC} bins/inp_dep_synthesis.cpp)
 add_executable(simulate_aiger ${non_executable_SRC} ${aiger_lib_SRC} bins/simulate_aiger.cpp)
@@ -34,7 +35,7 @@ if (SPOT_INCLUDE_DIR)
     message(STATUS "Found Spot include dir: ${SPOT_INCLUDE_DIR}")
     include_directories(${SPOT_INCLUDE_DIR})
 endif()
-include_directories(./src/findDeps ./src/models ./src/synthesis ./src/utils ./src/unates ./libs/aiger ./libs/abc ./libs/abc/src ./src/inputDependencies
+include_directories(${PROJECT_SOURCE_DIR}/src/findDeps ${PROJECT_SOURCE_DIR}/src/models ${PROJECT_SOURCE_DIR}/src/synthesis ${PROJECT_SOURCE_DIR}/src/utils ${PROJECT_SOURCE_DIR}/src/unates ${PROJECT_SOURCE_DIR}/libs/aiger ${PROJECT_SOURCE_DIR}/libs/abc ${PROJECT_SOURCE_DIR}/libs/abc/src ${PROJECT_SOURCE_DIR}/src/inputDependencies
                     ${MAIN_REPO_ROOT}/src/findDeps ${MAIN_REPO_ROOT}/src/models ${MAIN_REPO_ROOT}/src/synthesis ${MAIN_REPO_ROOT}/src/utils ${MAIN_REPO_ROOT}/src/unates ${MAIN_REPO_ROOT}/src/inputDependencies)
 
 # Configuration
@@ -116,6 +117,7 @@ endif ()
 
 # Linking exectuables to packages
 target_link_libraries(find_dependencies boost_options spot bddx abc Threads::Threads)
+target_link_libraries(find_input_dependencies boost_options spot bddx abc Threads::Threads)
 target_link_libraries(depsynt boost_options spot bddx abc Threads::Threads)
 target_link_libraries(inp_dep_synthesis boost_options spot bddx abc Threads::Threads)
 target_link_libraries(simulate_aiger boost_options spot bddx abc Threads::Threads)

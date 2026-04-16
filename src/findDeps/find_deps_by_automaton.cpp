@@ -46,10 +46,10 @@ void FindDepsByAutomaton::find_dependencies(vector<string>& dependent_variables,
         if (FindDepsByAutomaton::is_variable_dependent(dependent_var, dependency_set,
                                                        compatibleStates, use_single_bdd)) {
             dependent_variables.push_back(dependent_var);
-            m_measures.end_testing_variable(true, dependency_set);
+            m_measures.end_testing_variable(true, false, dependency_set);
         } else {
             independent_variables.push_back(dependent_var);
-            m_measures.end_testing_variable(false, dependency_set);
+            m_measures.end_testing_variable(false, false, dependency_set);
         }
     }
 
@@ -277,6 +277,21 @@ bool are_edges_shares_assignment(spot::twa_graph::edge_storage_t& e1,
     return (e1.cond & e2.cond) != bddfalse;
 }
 
+/**
+ * @brief Checks if two states "collide" based on their outgoing edges for a given dependent variable.
+ *
+ * This function determines if it's possible for the dependent variable to take different values
+ * (True and False) while maintaining the same subsequent behavior in the automaton, starting from
+ * the two given states. If such a collision exists, the variable cannot be uniquely determined
+ * (dependent) in that context.
+ *
+ * @param automaton The automaton graph pointer.
+ * @param state1 The first state to compare.
+ * @param state2 The second state to compare.
+ * @param dependent_var_num The BDD index of the dependent variable being tested.
+ * @return true if a collision exists (indicating the variable might NOT be dependent).
+ * @return false if no collision occurs between these states.
+ */
 bool are_states_collides_by_edges(spot::twa_graph_ptr& automaton, unsigned state1, unsigned state2, int dependent_var_num) {
     auto edges_p = automaton->out(state1);
     auto edges_q = automaton->out(state2);

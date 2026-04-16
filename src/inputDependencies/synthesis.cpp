@@ -15,6 +15,8 @@
 #include "handle_unates_by_heuristic.h"
 #include "nba_utils.h"
 #include "synthesis_utils.h"
+#include "find_input_deps_by_automaton.h"
+#include "input_dependents_synthesiser.h"
 
 using namespace std;
 using namespace spot;
@@ -363,4 +365,126 @@ int synthesis(SynthesisCLIOptions options, SyntInstance& synt_instance, Synthesi
 
     verbose << "==== Synthesis Completed ====" << endl;
     return EXIT_SUCCESS;
+}
+
+void find_input_dependencies_in_decomposition(
+    SynthesisCLIOptions& options,
+    SynthesisMeasure& synt_measure,
+    SyntInstance& synt_instance,
+    spot::twa_graph_ptr& negated_nba,
+    ostream& verbose,
+    vector<string>& independent_variables,
+    vector<string>& dependent_variables,
+    const vector<string>& ignored_vars)
+{
+    bool skip_dependencies = options.dependency_timeout <= 0;
+    if (skip_dependencies) {
+        verbose << "=> Skipping finding and ejecting dependencies" << endl;
+        independent_variables = synt_instance.get_input_vars();
+    } else {
+        FindInputDepsByAutomaton automaton_dependencies(synt_instance, synt_measure,
+                                                         negated_nba, false, ignored_vars);
+
+        std::future<void> fut = std::async(std::launch::async, [&] {
+            automaton_dependencies.find_dependencies(dependent_variables,
+                                                     independent_variables, false);
+        });
+        if (fut.wait_for(std::chrono::milliseconds (options.dependency_timeout)) == std::future_status::timeout) {
+            automaton_dependencies.stop();
+        }
+        // TODO: This polling loop with sleep is sub-optimal. 
+        // Consider using fut.wait() for standard C++ synchronization.
+        while (!automaton_dependencies.is_done()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        }
+
+        verbose << "Found " << dependent_variables.size()
+                << " dependent variables" << endl;
+    }
+}
+
+bool synthesise_input_dependents(
+    SynthesisCLIOptions& options,
+    SynthesisMeasure& synt_measure,
+    spot::twa_graph_ptr nba_without_deps,
+    spot::twa_graph_ptr nba_with_deps,
+    vector<string>& input_vars,
+    vector<string>& output_vars,
+    vector<string>& independent_variables,
+    vector<string>& dependent_variables,
+    unordered_map<int, bdd>& bdd_to_bdd_without_deps,
+    spot::aig_ptr& deps_strategy,
+    const vector<string>& ignored_vars)
+{
+    deps_strategy = nullptr;
+    if(!dependent_variables.empty()) {
+        synt_measure.start_dependents_synthesis();
+        InputDependentsSynthesiser dependents_synt(nba_without_deps,
+                                                   nba_with_deps,
+                                                   input_vars,
+                                                   output_vars,
+                                                   independent_variables,
+                                                   dependent_variables,
+                                                   bdd_to_bdd_without_deps);
+        deps_strategy = dependents_synt.synthesis();
+        synt_measure.end_dependents_synthesis(deps_strategy);
+    }
+
+    if(!dependent_variables.empty() && deps_strategy == nullptr) {
+        cout << "UNREALIZABLE" << endl;
+        synt_measure.completed();
+        dump_measures(synt_measure, options);
+        return false;
+    }
+    return true;
+}
+
+bool decompose_synthesis_only_input_dependents_as_aut(
+    SynthesisCLIOptions& options, SynthesisMeasure& synt_measure,
+    spot::synthesis_info& gi, SyntInstance& synt_instance, spot::twa_graph_ptr& nba,
+    vector<string>& input_vars, vector<string>& output_vars, ostream& verbose,
+    spot::twa_graph_ptr& deps_strategy_aut, vector<string>& independent_variables,
+    vector<string>& dependent_variables, const vector<string>& ignored_vars)
+{
+    twa_graph_ptr negated_nba = construct_automaton_negation(synt_instance, gi.dict);
+
+    find_input_dependencies_in_decomposition(options,
+                                             synt_measure,
+                                             synt_instance,
+                                             negated_nba,
+                                             verbose,
+                                             independent_variables,
+                                             dependent_variables,
+                                             ignored_vars);
+
+    twa_graph_ptr negated_nba_without_deps = nullptr, negated_nba_with_deps = nullptr;
+    unordered_map<int, bdd> bdd_to_bdd_without_deps;
+    prepare_nba_for_decomposition(synt_measure,
+                                   negated_nba,
+                                   dependent_variables,
+                                   negated_nba_with_deps,
+                                   negated_nba_without_deps,
+                                   bdd_to_bdd_without_deps);
+
+    spot::aig_ptr deps_strategy = nullptr;
+    if (!synthesise_input_dependents(options,
+                                     synt_measure,
+                                     negated_nba_without_deps,
+                                     negated_nba_with_deps,
+                                     input_vars,
+                                     output_vars,
+                                     independent_variables,
+                                     dependent_variables,
+                                     bdd_to_bdd_without_deps,
+                                     deps_strategy,
+                                     ignored_vars)) {
+        return false;
+    }
+
+    if (deps_strategy != nullptr) {
+        deps_strategy_aut = deps_strategy->as_automaton(false);
+    } else {
+        deps_strategy_aut = nullptr;
+    }
+    return true;
 }

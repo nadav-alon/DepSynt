@@ -22,7 +22,7 @@ def parse_benchmark_file(filepath):
                     parts = line.split(':', 1)
                     key = parts[0].strip().lower()
                     val = parts[1].strip()
-                    if key in ['name', 'formula', 'input', 'output', 'family', 'id']:
+                    if key in ['name', 'formula', 'input', 'output', 'family', 'id', 'env', 'sys']:
                         d[key] = val
                         is_labeled = True
             
@@ -77,22 +77,39 @@ def add_turn_delay(formula, variables):
 
 def run_find_deps(benchmark, tool_path="./find_dependencies"):
     env_form = benchmark.get('env_formula', '')
-    if not env_form:
-        print(f"Warning: No env_formula found for {benchmark['name']}")
+    sys_form = benchmark.get('sys_formula', '')
+    formula = benchmark.get('formula', '')
     
-    # Preprocess the formula: 
-    # Add X to every output variable of Gamma to add a 1 turn delay.
-    # Note: Gamma's output variables are the benchmark's input variables
-    adjusted_env = add_turn_delay(env_form, benchmark['inputs'])
+    tool_name = os.path.basename(tool_path)
+    if "find_input_dependencies" in tool_name:
+        # The new tool handles input dependencies natively and is causality-aware.
+        # It expects the original spec (env -> sys) or just the formula.
+        # It will handle negation internally if it follows the updated bins/find_input_dependencies.cpp logic.
+        formula_arg = formula if formula else f"({env_form}) -> ({sys_form})"
+        cmd = [
+            tool_path,
+            "--formula", formula_arg,
+            "--input", benchmark['inputs'],
+            "--output", benchmark['outputs'],
+            "--algo", "automaton"
+        ]
+    else:
+        # Legacy mode using find_dependencies (which finds output dependencies)
+        # This requires swapping inputs/outputs and adding a turn delay to fake causality.
+        if not env_form:
+            print(f"Warning: No env_formula found for {benchmark['name']}, and using legacy find_dependencies. This might fail.")
+        
+        # Add X to every output variable of Gamma to add a 1 turn delay.
+        adjusted_env = add_turn_delay(env_form, benchmark['inputs'])
+        
+        cmd = [
+            tool_path,
+            "--formula", adjusted_env,
+            "--input", benchmark['outputs'],  # Swapped
+            "--output", benchmark['inputs'],  # Swapped
+            "--algo", "automaton"
+        ]
     
-    # Input dependencies are the output dependencies of Gamma with inputs and outputs swapped
-    cmd = [
-        tool_path,
-        "--formula", adjusted_env,
-        "--input", benchmark['outputs'],  # Swapped: tool's --input gets benchmark's outputs
-        "--output", benchmark['inputs'],  # Swapped: tool's --output gets benchmark's inputs (candidates)
-        "--algo", "automaton"
-    ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -149,10 +166,13 @@ def main():
                         benchmarks.append({
                             'name': entry.get('name', 'unknown'),
                             'family': entry.get('family', 'verification_suite'),
-                            'formula': entry.get('sys', ''),
-                            'env_formula': entry.get('env', ''),
+                            'formula': entry.get('formula', ''),
+                            'env_formula': entry.get('env_formula', entry.get('env', '')),
+                            'sys_formula': entry.get('sys_formula', entry.get('sys', '')),
                             'inputs': entry.get('inputs', ''),
-                            'outputs': entry.get('outputs', '')
+                            'outputs': entry.get('outputs', ''),
+                            'expected_deps': entry.get('expected_deps', None),
+                            'expected_deps_options': entry.get('expected_deps_options', None)
                         })
             except Exception as e:
                 print(f"Error reading JSON {filepath}: {e}")
@@ -162,25 +182,61 @@ def main():
             if benchmark:
                 benchmarks.append(benchmark)
 
+        total_tests = 0
+        passed_tests = 0
+        failed_tests = []
+
         for benchmark in benchmarks:
+            total_tests += 1
             print(f"=== Benchmark: {benchmark['name']} ({benchmark['family']}) ===")
             data = run_find_deps(benchmark, args.tool)
             if not data:
                 print("Failed to get dependency data.\n")
+                failed_tests.append(benchmark['name'])
                 continue
             
             deps = data.get("dependency", {}).get("tested_dependencies", [])
             input_deps = [d for d in deps if d.get("is_dependent")]
+            found_dep_names = [d['name'] for d in input_deps]
             
             print(f"Amount of input dependencies: {len(input_deps)}")
             if input_deps:
                 print("Dependencies:")
                 for d in input_deps:
                     dep_set = d.get("tested_dependency_set", [])
-                    print(f"  - Input '{d['name']}' depends on: {', '.join(dep_set) if dep_set else 'nothing (constant)'}")
+                    label = "nothing (constant)" if d.get('is_constant') else "nothing (history/outputs)"
+                    print(f"  - Input '{d['name']}' depends on: {', '.join(dep_set) if dep_set else label}")
             else:
                 print("No input dependencies found.")
+            
+            expected_options = benchmark.get('expected_deps_options')
+            expected_single = benchmark.get('expected_deps')
+            
+            if expected_options is not None:
+                passed = any(set(found_dep_names) == set(opt) for opt in expected_options)
+                if passed:
+                    print("\033[92m[PASS]\033[0m")
+                    passed_tests += 1
+                else:
+                    print(f"\033[91m[FAIL]\033[0m (Found: {found_dep_names}, Expected one of: {expected_options})")
+                    failed_tests.append(benchmark['name'])
+            elif expected_single is not None:
+                passed = set(found_dep_names) == set(expected_single)
+                if passed:
+                    print("\033[92m[PASS]\033[0m")
+                    passed_tests += 1
+                else:
+                    print(f"\033[91m[FAIL]\033[0m (Found: {found_dep_names}, Expected: {expected_single})")
+                    failed_tests.append(benchmark['name'])
+            else:
+                print("[INFO] No expectations defined.")
+                passed_tests += 1
             print()
+
+        print(f"Summary: {passed_tests}/{total_tests} passed.")
+        if failed_tests:
+            print(f"Failed benchmarks: {', '.join(failed_tests)}")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

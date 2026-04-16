@@ -44,12 +44,13 @@ void BaseDependentsMeasures::start_testing_variable(string& var) {
 }
 
 void BaseDependentsMeasures::end_testing_variable(bool is_dependent,
+                                                  bool is_constant,
                                                   vector<string>& tested_dependency_set) {
     m_variable_test_time.end();
 
     m_tested_variables.push_back({*currently_testing_var,
                                   m_variable_test_time.get_duration(), is_dependent,
-                                  tested_dependency_set});
+                                  is_constant, tested_dependency_set});
     delete currently_testing_var;
     currently_testing_var = nullptr;
 }
@@ -122,6 +123,7 @@ void BaseDependentsMeasures::get_json_object(json& obj) const {
         var_obj["name"] = var.name;
         var_obj["duration"] = var.duration;
         var_obj["is_dependent"] = var.is_dependent;
+        var_obj["is_constant"] = var.is_constant;
         var_obj.emplace("tested_dependency_set", var.tested_dependency_set);
 
         tested_vars.emplace_back(var_obj);

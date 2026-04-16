@@ -43,6 +43,12 @@ SyntInstance::SyntInstance(std::vector<std::string>& inputs,
     m_formula = ss.str();
 };
 
+/**
+ * @brief Populates the destination vector with all variables from the instance, excluding those provided in the excluded list.
+ *
+ * @param dst The vector that will be populated with the filtered variables.
+ * @param excluded The list of variables to be omitted from the results.
+ */
 void SyntInstance::all_vars_excluded(std::vector<std::string>& dst,
                                      const std::vector<std::string>& excluded) {
     dst.clear();
