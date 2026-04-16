@@ -76,14 +76,17 @@ else
     cd ../..
 fi
 
-echo "=== 3. Running CMake ==="
+echo "=== 3. Cleaning and Running CMake ==="
 # We add $SEARCH_PATH and $SEARCH_PATH/usr to prefix path
+# On old CentOS 7 systems, we often need to link libstdc++ statically if the system's libstdc++.so is too old.
+rm -rf CMakeCache.txt CMakeFiles/
 cmake . \
+    -DCMAKE_EXE_LINKER_FLAGS="-static-libstdc++ -static-libgcc" \
     -DCMAKE_PREFIX_PATH="$SEARCH_PATH;$SEARCH_PATH/usr;$SEARCH_PATH/usr/lib/x86_64-linux-gnu;$SEARCH_PATH/usr/lib" \
     -DCMAKE_INCLUDE_PATH="$SEARCH_PATH/usr/include" \
-    -DCMAKE_LIBRARY_PATH="$SEARCH_PATH/usr/lib/x86_64-linux-gnu;$SEARCH_PATH/usr/lib"
+    -DCMAKE_LIBRARY_PATH="$SEARCH_PATH/lib;$SEARCH_PATH/usr/lib/x86_64-linux-gnu;$SEARCH_PATH/usr/lib"
 
 echo "=== 4. compiling ==="
-make -j4 find_dependencies depsynt inp_dep_synthesis
+make -j4 find_dependencies find_input_dependencies depsynt inp_dep_synthesis
 
 echo "=== Build Complete ==="

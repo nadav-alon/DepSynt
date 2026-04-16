@@ -12,6 +12,9 @@ TOTAL_TIMEOUT="{{TIMEOUT}}"
 CLI_TOOL="./find_dependencies"
 FILEPATH="{{BENCHMARKS_DIR}}/$SLURM_ARRAY_TASK_ID.txt"
 
+# Setup environment
+source "$(pwd)/scripts/hpc_setup.sh"
+
 benchmark_name=$(sed -n "2p" "$FILEPATH" | tr -d '\r')
 inputs_var=$(sed -n "5p" "$FILEPATH" | tr -d '\r')
 outputs_var=$(sed -n "6p" "$FILEPATH" | tr -d '\r')

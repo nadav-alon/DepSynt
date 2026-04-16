@@ -237,7 +237,7 @@ tasks:
     cmds:
       - mkdir -p .bin && [ -f ./.bin/task ] || curl -sL https://taskfile.dev/install.sh | sh -s -- -b ./.bin
       - ssh {{.HPC_HOST}} "mkdir -p {{.HPC_REMOTE_DIR}}"
-      - rsync -avz --exclude '.git' --exclude 'build/' --exclude 'tasks_output/' --exclude 'tasks_output_hpc/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
+      - rsync -avz --exclude '.git' --exclude 'build/' --exclude 'tasks_output/' --exclude 'tasks_output_hpc/' --exclude 'CMakeCache.txt' --exclude 'CMakeFiles/' --exclude 'cmake_install.cmake' --exclude 'Makefile' --exclude 'compile_commands.json' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
 
   hpc:build:
     desc: Build the project on HPC using sbatch hpc_build.sh

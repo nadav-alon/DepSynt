@@ -159,6 +159,7 @@ config.h
 experiments/
 /libs/abc/libabc.so
 /tasks_output
+/tasks_output_hpc
 submit_find_deps
 submit_depsynt
 submit_spot_modular
