@@ -80,13 +80,15 @@ def run_find_deps(benchmark, tool_path="./find_dependencies"):
     sys_form = benchmark.get('sys_formula', '')
     formula = benchmark.get('formula', '')
     
-    if "find_input_dependencies" in tool_path:
+    tool_name = os.path.basename(tool_path)
+    if "find_input_dependencies" in tool_name:
         # The new tool handles input dependencies natively and is causality-aware.
         # It expects the original spec (env -> sys) or just the formula.
         # It will handle negation internally if it follows the updated bins/find_input_dependencies.cpp logic.
+        formula_arg = formula if formula else f"({env_form}) -> ({sys_form})"
         cmd = [
             tool_path,
-            "--formula", formula if formula else f"({env_form}) -> ({sys_form})",
+            "--formula", formula_arg,
             "--input", benchmark['inputs'],
             "--output", benchmark['outputs'],
             "--algo", "automaton"
@@ -95,7 +97,7 @@ def run_find_deps(benchmark, tool_path="./find_dependencies"):
         # Legacy mode using find_dependencies (which finds output dependencies)
         # This requires swapping inputs/outputs and adding a turn delay to fake causality.
         if not env_form:
-            print(f"Warning: No env_formula found for {benchmark['name']}")
+            print(f"Warning: No env_formula found for {benchmark['name']}, and using legacy find_dependencies. This might fail.")
         
         # Add X to every output variable of Gamma to add a 1 turn delay.
         adjusted_env = add_turn_delay(env_form, benchmark['inputs'])

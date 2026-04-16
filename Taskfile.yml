@@ -144,7 +144,18 @@ tasks:
       - ./scripts/slurm_task_gen.py --task=find_deps --timeout={{.FIND_DEPENDENCIES_TIMEOUT}} --benchmarks-path={{.GENERATED_BENCHMARK_PATH}}/text --output-path={{.FIND_DEPENDENCIES_PATH}} > submit_find_deps
       - sbatch submit_find_deps
 
-  # Benchmark Input Dependencies Report
+  # Find Input Dependencies
+  find_input_deps:
+    desc: Build and run slurm jobs to find input dependencies on HPC
+    cmds:
+      - mkdir -p {{.FIND_DEPENDENCIES_PATH}}
+      - rm -f {{.FIND_DEPENDENCIES_PATH}}/*
+      - rm -f ./submit_find_input_deps
+      - chmod +x ./scripts/slurm_task_gen.py
+      - ./scripts/slurm_task_gen.py --task=find_input_deps --timeout={{.FIND_DEPENDENCIES_TIMEOUT}} --benchmarks-path={{.BENCHMARKS_DIR}} --output-path={{.FIND_DEPENDENCIES_PATH}} > submit_find_input_deps
+      - sbatch submit_find_input_deps
+    vars:
+       BENCHMARKS_DIR: '{{default (print .GENERATED_BENCHMARK_PATH "/text") .BENCHMARKS_DIR}}'
   bench:input_deps:
     desc: Build and report input dependencies for a set of benchmarks
     summary: |
@@ -224,15 +235,14 @@ tasks:
   hpc:sync:
     desc: Sync local code and benchmarks to HPC via rsync
     cmds:
-      - task: generate_benchmarks
       - mkdir -p .bin && [ -f ./.bin/task ] || curl -sL https://taskfile.dev/install.sh | sh -s -- -b ./.bin
       - ssh {{.HPC_HOST}} "mkdir -p {{.HPC_REMOTE_DIR}}"
-      - rsync -avz --exclude 'build/' --exclude 'libs/' --exclude 'tasks_output/strix/' --exclude 'tasks_output/depsynt/' --exclude 'tasks_output/depsynt-measures/' --exclude 'tasks_output/find_deps/' --exclude 'tasks_output/find_deps_formula/' --exclude 'tasks_output/spot_modular/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
+      - rsync -avz --exclude '.git' --exclude 'build/' --exclude 'tasks_output/' --exclude 'tasks_output_hpc/' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
 
   hpc:build:
     desc: Build the project on HPC using sbatch hpc_build.sh
     cmds:
-      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && git submodule update --init --recursive && chmod +x hpc_build.sh && sbatch hpc_build.sh"
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && chmod +x hpc_build.sh && sbatch hpc_build.sh"
       - task: hpc:monitor
 
   hpc:run:depsynt:
@@ -244,6 +254,11 @@ tasks:
     desc: Submit Slurm jobs for find_dependencies on HPC
     cmds:
       - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task find_dependencies"
+
+  hpc:run:find_input_deps:
+    desc: Submit Slurm jobs for find_input_deps on HPC
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task find_input_deps BENCHMARKS_DIR='{{.BENCHMARKS_DIR}}'"
 
   hpc:monitor:
     desc: Polling squeue to check if jobs are still running
