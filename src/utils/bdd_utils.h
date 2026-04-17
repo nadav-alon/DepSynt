@@ -19,9 +19,9 @@ class BDDVarsCacher {
    public:
     BDDVarsCacher(spot::twa_graph_ptr automaton);
 
-    int get_variable_index(std::string& variable_name);
+    int get_variable_index(const std::string& variable_name);
 
-    int get_prime_variable_index(std::string& variable_name);
+    int get_prime_variable_index(const std::string& variable_name);
 };
 
 struct NBABDDSummary {

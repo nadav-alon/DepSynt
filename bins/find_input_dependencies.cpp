@@ -14,7 +14,7 @@
 #include <fstream>
 #include <spot/twaalgos/aiger.hh>
 
-namespace Options = boost::program_options;
+
 using namespace std;
 
 static AutomatonFindDepsMeasure* synt_measures = nullptr;
@@ -65,7 +65,9 @@ int main(int argc, const char* argv[]) {
         verbose_out << "Searching Input Dependencies By Causal Automaton Definition..." << endl;
 
         // Building Instance Automaton
-        spot::synthesis_info gi;
+        auto* gi_ptr = new spot::synthesis_info();
+        spot::synthesis_info& gi = *gi_ptr;
+        gi.dict = spot::make_bdd_dict();
         gi.s = spot::synthesis_info::algo::SPLIT_DET;
         gi.minimize_lvl = 2;
 
@@ -79,10 +81,37 @@ int main(int argc, const char* argv[]) {
         vector<string> outputs;
         extract_variables(options.outputs, outputs);
 
+        vector<string> input_vars;
+        extract_variables(options.inputs, input_vars);
+
         FindInputDepsByAutomaton automaton_dependencies(
             synt_instance, *automaton_measures, automaton, false, outputs);
             
-        automaton_dependencies.find_dependencies(dependent_variables, independent_variables, false);
+        if (options.contextual) {
+            verbose_out << "Performing contextual dependency discovery..." << endl;
+            automaton_dependencies.find_contextual_dependencies(false);
+            
+            // For contextual discovery, we assume ALL inputs are candidates for dependency
+            // but the independent set is defined as variables where density is 0?
+            // Actually, for contextual, we just need the conflict pairs.
+            // But let's fill dependent_variables for the transducer synthesis logic.
+            for (const auto& var : input_vars) {
+                if (automaton_dependencies.get_dependency_density(var) > 0) {
+                    dependent_variables.push_back(var);
+                } else {
+                    independent_variables.push_back(var);
+                }
+            }
+        } else {
+            automaton_dependencies.find_dependencies(dependent_variables, independent_variables, false);
+        }
+
+        if (options.report_density) {
+            cout << "Contextual Dependency Density Report:" << endl;
+            for (const auto& var : input_vars) {
+                cout << " - " << var << ": " << automaton_dependencies.get_dependency_density(var) << endl;
+            }
+        }
 
         cout << "Input Dependent Variables: " << dependent_variables << endl;
         cout << "Input Independent Variables: " << independent_variables << endl;
@@ -96,9 +125,6 @@ int main(int argc, const char* argv[]) {
             
             remove_ap_from_automaton(nba_without_deps, dependent_variables, bdd_to_bdd_without_deps);
             
-            vector<string> input_vars;
-            extract_variables(options.inputs, input_vars);
-            
             InputDependentsSynthesiser synthesis(
                 nba_without_deps,
                 nba_with_deps,
@@ -106,7 +132,9 @@ int main(int argc, const char* argv[]) {
                 outputs, // these are system outputs in the negated formula's POV
                 independent_variables,
                 dependent_variables,
-                bdd_to_bdd_without_deps
+                bdd_to_bdd_without_deps,
+                automaton_dependencies.get_conflict_pairs(),
+                automaton_dependencies.get_state_dep_functions()
             );
             
             spot::aig_ptr strategy = synthesis.synthesis();

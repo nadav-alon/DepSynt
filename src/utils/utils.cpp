@@ -138,7 +138,13 @@ bool parse_find_dependencies_cli(int argc, const char *argv[],
         "variables")(
         "dependency-transducer-path",
         Options::value<string>(&options.dependency_transducer_path)->default_value(""),
-        "Path to save the dependency transducer strategy");
+        "Path to save the dependency transducer strategy")(
+        "contextual",
+        Options::bool_switch(&options.contextual)->default_value(false),
+        "Use contextual dependency discovery")(
+        "report-density",
+        Options::bool_switch(&options.report_density)->default_value(false),
+        "Report dependency density per variable");
 
     try {
         Options::command_line_parser parser{argc, argv};

@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.21)
 project(reactive-synthesis-bfss)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable RPATH for local libraries
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_RPATH "${PROJECT_SOURCE_DIR}/libs/spot/inst/lib;${PROJECT_SOURCE_DIR}/libs/abc")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -30,7 +37,11 @@ list(APPEND CMAKE_PREFIX_PATH "./libs/spot" "./libs/abc" "${MAIN_REPO_ROOT}/libs
 include_directories(./libs/abc/src ${MAIN_REPO_ROOT}/libs/abc/src)
 
 # Dynamic Spot Include
-find_path(SPOT_INCLUDE_DIR NAMES spot/twa/twa.hh PATHS "${PROJECT_SOURCE_DIR}/libs/spot/spot" "${MAIN_REPO_ROOT}/libs/spot/spot")
+find_path(SPOT_INCLUDE_DIR NAMES spot/twa/twa.hh 
+          HINTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/spot/inst/include"
+                "${CMAKE_CURRENT_SOURCE_DIR}/libs/spot/spot"
+          NO_DEFAULT_PATH)
+
 if (SPOT_INCLUDE_DIR)
     message(STATUS "Found Spot include dir: ${SPOT_INCLUDE_DIR}")
     include_directories(${SPOT_INCLUDE_DIR})
@@ -45,8 +56,8 @@ configure_file(./src/utils/config.h.in ./src/utils/config.h)
 
 # Define paths to look for Spot and ABC
 set(SPOT_SEARCH_DIRS 
-    "${PROJECT_SOURCE_DIR}/libs/spot/inst"
-    "${MAIN_REPO_ROOT}/libs/spot/inst")
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/spot/inst/lib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/spot/inst")
 
 set(ABC_SEARCH_DIRS 
     "${PROJECT_SOURCE_DIR}/libs/abc"
@@ -76,7 +87,10 @@ set_target_properties(boost_options PROPERTIES IMPORTED_LOCATION ${boost_options
 # Priorities: CMAKE_PREFIX_PATH (e.g. hpc_deps) -> Local libs/spot/inst -> System
 
 # Include BDDX package
-find_library(bddx_location NAMES bddx bddx.a PATHS ${SPOT_SEARCH_DIRS})
+find_library(bddx_location NAMES bddx bddx.a HINTS ${SPOT_SEARCH_DIRS} NO_DEFAULT_PATH)
+if (NOT bddx_location)
+    find_library(bddx_location NAMES bddx bddx.a)
+endif()
 if (NOT bddx_location)
     message(FATAL_ERROR "BDDX library not found")
 endif ()
@@ -85,7 +99,10 @@ add_library(bddx STATIC IMPORTED)
 set_target_properties(bddx PROPERTIES IMPORTED_LOCATION ${bddx_location})
 
 # Include spot package
-find_library(spot_location NAMES spot spot.a PATHS ${SPOT_SEARCH_DIRS})
+find_library(spot_location NAMES spot spot.a HINTS ${SPOT_SEARCH_DIRS} NO_DEFAULT_PATH)
+if (NOT spot_location)
+    find_library(spot_location NAMES spot spot.a)
+endif()
 if (NOT spot_location)
     message(FATAL_ERROR "Spot library not found")
 endif ()
@@ -94,20 +111,17 @@ add_library(spot STATIC IMPORTED)
 set_target_properties(spot PROPERTIES IMPORTED_LOCATION ${spot_location})
 
 # Include Spot headers
-find_path(spot_include_dir_actual NAMES spot/twa/twa.hh PATHS ${SPOT_SEARCH_DIRS} PATH_SUFFIXES include)
+find_path(spot_include_dir_actual NAMES spot/twa/twa.hh 
+          HINTS ${SPOT_SEARCH_DIRS} 
+          PATH_SUFFIXES include 
+          NO_DEFAULT_PATH)
 if (NOT spot_include_dir_actual)
-    # Check if we found headers earlier or in the library's include dir
-    get_filename_component(SPOT_LIB_DIR "${spot_location}" DIRECTORY)
-    if (EXISTS "${SPOT_LIB_DIR}/../include/spot/twa/twa.hh")
-        set(spot_include_dir_actual "${SPOT_LIB_DIR}/../include")
-    endif()
+    set(spot_include_dir_actual ${SPOT_INCLUDE_DIR})
 endif()
 
 if (spot_include_dir_actual)
     message(STATUS "Using Spot include dir: ${spot_include_dir_actual}")
     include_directories(${spot_include_dir_actual})
-else()
-    message(WARNING "Spot headers not found in standard paths, using fallback include logic")
 endif()
 
 # Linking exectuables to packages

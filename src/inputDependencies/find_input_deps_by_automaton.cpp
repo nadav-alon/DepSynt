@@ -66,6 +66,46 @@ void FindInputDepsByAutomaton::find_dependencies(vector<string>& dependent_varia
     m_is_done.store(true);
 }
 
+void FindInputDepsByAutomaton::find_contextual_dependencies(bool use_single_bdd) {
+    m_measures.start_find_deps();
+
+    std::vector<std::string> candidates = m_synt_instance.get_input_vars();
+    std::vector<std::string> available_as_dependency_vars = candidates;
+
+    for (const auto& var : candidates) {
+        if (m_stop_flag.load()) break;
+        
+        string var_copy = var;
+        m_measures.start_testing_variable(var_copy);
+        
+        std::vector<std::string> dependency_set;
+        for (const auto& v : available_as_dependency_vars) {
+            if (v != var) dependency_set.push_back(v);
+        }
+
+        // Include outputs as potential dependencies (non-causal)
+        for (const auto& out_var : m_synt_instance.get_output_vars()) {
+            dependency_set.push_back(out_var);
+        }
+
+        this->check_contextual_deps(var, dependency_set);
+        
+        // If it was found to be even partially dependent, remove it from available set for others to avoid cycles
+        if (m_dependency_density.count(var) && m_dependency_density[var] > 0) {
+            auto it = std::find(available_as_dependency_vars.begin(), available_as_dependency_vars.end(), var);
+            if (it != available_as_dependency_vars.end()) {
+                available_as_dependency_vars.erase(it);
+            }
+            m_measures.end_testing_variable(true, false, dependency_set);
+        } else {
+            m_measures.end_testing_variable(false, false, dependency_set);
+        }
+    }
+
+    m_measures.end_find_deps(!m_stop_flag.load());
+    m_is_done.store(true);
+}
+
 void FindInputDepsByAutomaton::find_dependencies_candidates(
     std::vector<std::string>& candidates_dst) {
     candidates_dst.clear();
@@ -241,7 +281,7 @@ bool FindInputDepsByAutomaton::get_all_compatible_states(std::vector<PairState>&
 }
 
 bool FindInputDepsByAutomaton::is_global_constant(const std::string& var, bool& value_dst) {
-    int var_num = m_bdd_cacher->get_variable_index(const_cast<std::string&>(var));
+    int var_num = m_bdd_cacher->get_variable_index(var);
     bdd var_bdd = bdd_ithvar(var_num);
     
     bool first = true;
@@ -272,4 +312,94 @@ bool FindInputDepsByAutomaton::is_global_constant(const std::string& var, bool& 
     
     value_dst = found_value;
     return !first;
+}
+
+/**
+ * @brief Analyzes contextual (state-based) dependencies for a given input variable.
+ * 
+ * This function identifies states and pairs of states where an input variable 'var' is 
+ * deterministically constrained by a set of dependency variables. It quantifies out 
+ * all other variables to determine if 'var''s value is uniquely forced to satisfy 
+ * at least one non-loop outgoing transition.
+ * 
+ * The analysis populates:
+ * - m_state_dep_functions: Maps states to the BDD condition (over dependency_vars) 
+ *   under which 'var' must be true.
+ * - m_conflict_pairs: Lists pairs of states (i, j) where 'var' could take 
+ *   different values for the same dependency assignment, potentially violating dependency.
+ * - m_dependency_density: The ratio of states where 'var' is uniquely determined.
+ * 
+ * @param var The input variable to analyze.
+ * @param dependency_vars The set of potential variables (inputs and outputs) 'var' depends on.
+ */
+void FindInputDepsByAutomaton::check_contextual_deps(const string& var, const vector<string>& dependency_vars) {
+    int v_num = m_bdd_cacher->get_variable_index(var);
+    bdd v_bdd = bdd_ithvar(v_num);
+    bdd not_v_bdd = bdd_nithvar(v_num);
+    
+    std::unordered_set<string> deps(dependency_vars.begin(), dependency_vars.end());
+    
+    // Variables to quantify out: Everything NOT in dependency_vars and NOT the dependent var itself
+    bdd vars_to_quantify = bddtrue;
+    for (const auto& in_var : m_synt_instance.get_input_vars()) {
+        if (in_var != var && deps.find(in_var) == deps.end()) {
+            vars_to_quantify &= bdd_ithvar(m_bdd_cacher->get_variable_index(in_var));
+        }
+    }
+    for (const auto& out_var : m_synt_instance.get_output_vars()) {
+        if (deps.find(out_var) == deps.end()) {
+            vars_to_quantify &= bdd_ithvar(m_bdd_cacher->get_variable_index(out_var));
+        }
+    }
+
+    // We also quantify out the dependent variable itself to see if it's "possible" for a given X
+    bdd vars_to_quantify_with_v = vars_to_quantify & v_bdd;
+
+    std::vector<bdd> state_conds_v1(m_automaton->num_states(), bddfalse);
+    std::vector<bdd> state_conds_v0(m_automaton->num_states(), bddfalse);
+    std::vector<bdd> state_conds_any(m_automaton->num_states(), bddfalse);
+
+    for (unsigned s = 0; s < m_automaton->num_states(); ++s) {
+        bdd combined_cond = bddfalse;
+        bool has_non_loop = false;
+        for (auto& edge : m_automaton->out(s)) {
+            if (edge.dst != s) {
+                combined_cond |= edge.cond;
+                has_non_loop = true;
+            }
+        }
+        
+        // If all edges are loops, then we have no "winning" move to follow at this step
+        if (!has_non_loop) {
+            state_conds_v1[s] = bddtrue;
+            state_conds_v0[s] = bddtrue;
+        } else {
+            state_conds_v1[s] = bdd_exist(combined_cond & v_bdd, vars_to_quantify_with_v);
+            state_conds_v0[s] = bdd_exist(combined_cond & not_v_bdd, vars_to_quantify_with_v);
+        }
+        
+        state_conds_any[s] = bdd_exist(combined_cond, vars_to_quantify_with_v);
+        m_state_dep_functions[var][s] = state_conds_v1[s];
+    }
+
+    std::vector<std::pair<unsigned, unsigned>> conflicts;
+    unsigned deterministic_count = 0;
+
+    for (unsigned i = 0; i < m_automaton->num_states(); ++i) {
+        if ((state_conds_v1[i] & state_conds_v0[i]) != bddfalse) {
+            conflicts.push_back({i, i});
+        } else {
+            deterministic_count++;
+        }
+
+        for (unsigned j = i + 1; j < m_automaton->num_states(); ++j) {
+            if ((state_conds_v1[i] & state_conds_v0[j]) != bddfalse ||
+                (state_conds_v1[j] & state_conds_v0[i]) != bddfalse) {
+                conflicts.push_back({i, j});
+            }
+        }
+    }
+
+    m_conflict_pairs[var] = conflicts;
+    m_dependency_density[var] = (double)deterministic_count / m_automaton->num_states();
 }

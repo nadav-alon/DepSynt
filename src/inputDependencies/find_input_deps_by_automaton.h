@@ -23,6 +23,11 @@ class FindInputDepsByAutomaton {
     std::atomic<bool> m_stop_flag;
     std::atomic<bool> m_is_done;
     std::vector<std::string> m_ignored_vars;
+    
+    // Contextual Dependencies
+    std::map<std::string, std::vector<std::pair<unsigned, unsigned>>> m_conflict_pairs;
+    std::map<std::string, std::map<unsigned, bdd>> m_state_dep_functions;
+    std::map<std::string, double> m_dependency_density;
 
     bool is_variable_dependent(std::string dependent_var,
                                std::vector<std::string>& dependency_vars,
@@ -45,6 +50,9 @@ class FindInputDepsByAutomaton {
 
     bool is_global_constant(const std::string& var, bool& value_dst);
 
+    /** Analyzes and stores contextual dependency info for a variable. */
+    void check_contextual_deps(const std::string& var, const std::vector<std::string>& dependency_vars);
+
    public:
     explicit FindInputDepsByAutomaton(SyntInstance& synt_instance,
                                       AutomatonFindDepsMeasure& measure,
@@ -65,8 +73,6 @@ class FindInputDepsByAutomaton {
         }
 
         m_bdd_cacher = new BDDVarsCacher(m_automaton);
-
-        m_bdd_cacher = new BDDVarsCacher(m_automaton);
     }
 
     ~FindInputDepsByAutomaton() {
@@ -78,6 +84,21 @@ class FindInputDepsByAutomaton {
     void find_dependencies(std::vector<std::string>& dependent_variables,
                            std::vector<std::string>& independent_variables,
                            bool use_single_bdd);
+
+    void find_contextual_dependencies(bool use_single_bdd);
+
+    const std::map<std::string, std::vector<std::pair<unsigned, unsigned>>>& get_conflict_pairs() const {
+        return m_conflict_pairs;
+    }
+
+    const std::map<std::string, std::map<unsigned, bdd>>& get_state_dep_functions() const {
+        return m_state_dep_functions;
+    }
+
+    double get_dependency_density(const std::string& var) const {
+        auto it = m_dependency_density.find(var);
+        return it != m_dependency_density.end() ? it->second : 0.0;
+    }
 
     void stop() {
         m_stop_flag.store(true);

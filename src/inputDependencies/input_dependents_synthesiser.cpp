@@ -14,29 +14,38 @@ using namespace spot;
 spot::aig_ptr InputDependentsSynthesiser::synthesis() {
     init_aiger();
     define_next_latches();
-    define_output_gates();
 
     if (m_is_realizable == Realizability::UNREALIZABLE) {
         return nullptr;
     }
+    
+    define_unified_output_gates();
+    
     return m_aiger;
 }
 
 void InputDependentsSynthesiser::init_aiger() {
-    // AIGER inputs: indep inputs + outputs. dep inputs are calculated from indep inputs
+    // AIGER inputs: indep inputs (those not currently being "monitored"?) 
+    // Wait, the monitor should take ALL inputs and outputs to update its belief state.
+    // But it SHOULDN'T use the current dependent input values to predict themselves.
+    // However, AIGER typically has inputs and outputs.
+    // We'll treat all environment inputs and system outputs as monitor inputs.
     std::vector<std::string> aiger_inputs;
-    
-    std::copy(m_indep_vars.begin(), m_indep_vars.end(),
-              std::back_inserter(aiger_inputs));
+    std::copy(m_input_vars.begin(), m_input_vars.end(), std::back_inserter(aiger_inputs));
+    std::copy(m_output_vars.begin(), m_output_vars.end(), std::back_inserter(aiger_inputs));
 
-    std::copy(m_output_vars.begin(), m_output_vars.end(),
-              std::back_inserter(aiger_inputs));
+    // Monitor outputs: for each input v, we have out_v_val and out_v_is_dep
+    std::vector<std::string> monitor_outputs;
+    for (const auto& var : m_input_vars) {
+        monitor_outputs.push_back("out_" + var + "_val");
+        monitor_outputs.push_back("out_" + var + "_is_dep");
+    }
 
     unsigned num_latches = m_nba_with_deps->num_states() + 1;
-    m_aiger = std::make_shared<aig>(aiger_inputs, m_dep_vars, num_latches,
+    m_aiger = std::make_shared<aig>(aiger_inputs, monitor_outputs, num_latches,
                                     m_nba_with_deps->get_dict());
 
-    for (auto& var : m_dep_vars) {
+    for (auto& var : m_input_vars) {
         deps_bdd_vars.insert(this->ap_to_bdd_varnum(var));
     }
 }
@@ -140,6 +149,52 @@ void InputDependentsSynthesiser::define_output_gates() {
             return;
         }
         m_aiger->set_output(dep_idx, m_aiger->aig_or(dependent_conds));
+    }
+}
+
+void InputDependentsSynthesiser::define_unified_output_gates() {
+    for (unsigned i = 0; i < m_input_vars.size(); ++i) {
+        const string& var = m_input_vars[i];
+        
+        // 1. Synthesize is_dep gate
+        // is_dep = NOT(OR_{(s1, s2) in conflicts} (Latch_s1 AND Latch_s2))
+        vector<Gate> conflict_gates;
+        auto conflict_it = m_conflict_pairs.find(var);
+        if (conflict_it != m_conflict_pairs.end()) {
+            for (const auto& pair : conflict_it->second) {
+                Gate l1 = m_aiger->latch_var(pair.first);
+                Gate l2 = m_aiger->latch_var(pair.second);
+                conflict_gates.push_back(m_aiger->aig_and(l1, l2));
+            }
+        }
+        
+        Gate is_dep_gate;
+        if (conflict_gates.empty()) {
+            is_dep_gate = m_aiger->aig_true();
+        } else {
+            is_dep_gate = m_aiger->aig_not(m_aiger->aig_or(conflict_gates));
+        }
+        
+        // 2. Synthesize val gate
+        // val = OR_{s in States} (Latch_s AND get_partial_impl(f_s, var))
+        vector<Gate> val_conds;
+        auto func_it = m_state_dep_functions.find(var);
+        if (func_it != m_state_dep_functions.end()) {
+            for (const auto& state_func : func_it->second) {
+                unsigned state = state_func.first;
+                bdd func = state_func.second;
+                
+                Gate latch = m_aiger->latch_var(state);
+                Gate implementation = get_partial_impl(func, const_cast<string&>(var));
+                val_conds.push_back(m_aiger->aig_and(latch, implementation));
+            }
+        }
+        
+        Gate val_gate = val_conds.empty() ? m_aiger->aig_false() : m_aiger->aig_or(val_conds);
+        
+        // Set AIGER outputs: val at offset 2*i, is_dep at offset 2*i + 1
+        m_aiger->set_output(2 * i, val_gate);
+        m_aiger->set_output(2 * i + 1, is_dep_gate);
     }
 }
 

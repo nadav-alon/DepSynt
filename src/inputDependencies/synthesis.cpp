@@ -419,13 +419,18 @@ bool synthesise_input_dependents(
     deps_strategy = nullptr;
     if(!dependent_variables.empty()) {
         synt_measure.start_dependents_synthesis();
+        static const std::map<std::string, std::vector<std::pair<unsigned, unsigned>>> empty_conflicts;
+        static const std::map<std::string, std::map<unsigned, bdd>> empty_functions;
+        
         InputDependentsSynthesiser dependents_synt(nba_without_deps,
                                                    nba_with_deps,
                                                    input_vars,
                                                    output_vars,
                                                    independent_variables,
                                                    dependent_variables,
-                                                   bdd_to_bdd_without_deps);
+                                                   bdd_to_bdd_without_deps,
+                                                   empty_conflicts,
+                                                   empty_functions);
         deps_strategy = dependents_synt.synthesis();
         synt_measure.end_dependents_synthesis(deps_strategy);
     }
