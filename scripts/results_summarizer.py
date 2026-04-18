@@ -354,8 +354,26 @@ def load_find_deps(results_path, text_file_path):
     # Load JSON Measure
     if out_file == "" or benchmark.status == 'Irrelevant':
         return benchmark
-    benchmark_json = json.loads(out_file)
-    benchmark.load_from_dict(benchmark_json)
+    
+    try:
+        # JSON is usually on the last non-empty line
+        json_line = get_second_last_line(out_file)
+        if not json_line or not json_line.strip().startswith('{'):
+            # Try the last line as well
+            lines = [l for l in out_file.split('\n') if l.strip()]
+            if lines and lines[-1].strip().startswith('{'):
+                json_line = lines[-1]
+            else:
+                benchmark.status = 'Error'
+                benchmark.error_message = 'Malformed Output: No JSON found'
+                return benchmark
+                
+        benchmark_json = json.loads(json_line)
+        benchmark.load_from_dict(benchmark_json)
+    except Exception as e:
+        benchmark.status = 'Error'
+        benchmark.error_message = f'JSON Parsing Error: {str(e)}'
+        print(f"Error parsing benchmark {benchmark_id}: {str(e)}")
 
     return benchmark
 

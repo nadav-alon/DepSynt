@@ -136,6 +136,15 @@ bool parse_find_dependencies_cli(int argc, const char *argv[],
         Options::bool_switch(&options.find_input_dependencies)->default_value(false),
         "Search for input dependent variables instead of output dependent "
         "variables")(
+        "dependency-timeout",
+        Options::value<int>(&options.dependency_timeout)->default_value(0),
+        "Timeout for finding dependencies in milliseconds, if 0 then the process skips finding dependencies")(
+        "model-name",
+        Options::value<string>(&options.model_name)->default_value(""),
+        "Unique model name of the specification")(
+        "skip-unates",
+        Options::bool_switch(),
+        "Skip finding and handling unates (no-op for dependency finding)")(
         "dependency-transducer-path",
         Options::value<string>(&options.dependency_transducer_path)->default_value(""),
         "Path to save the dependency transducer strategy");
@@ -219,6 +228,8 @@ std::ostream &operator<<(std::ostream &out,
     out << " - Algorithm: " << algorithm_to_string(options.algorithm) << endl;
     out << " - Type of dependent variables: "
         << (options.find_input_dependencies ? "input" : "output") << endl;
+    out << " - Dependency timeout: " << options.dependency_timeout << endl;
+    out << " - Model name: " << options.model_name << endl;
     out << " - Dependency transducer path: " << options.dependency_transducer_path << endl;
 
     return out;

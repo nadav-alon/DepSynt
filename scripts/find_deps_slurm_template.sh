@@ -5,7 +5,7 @@
 #SBATCH --error={{OUTPUT_BASE_PATH}}/%a.err
 #SBATCH --array=1-{{NUM_BENCHMARKS}}
 #SBATCH --ntasks=1
-#SBATCH --mem=2G
+#SBATCH --mem=8G
 #SBATCh --cpus-per-task=1
 
 TOTAL_TIMEOUT="{{TIMEOUT}}"
@@ -20,7 +20,13 @@ inputs_var=$(sed -n "5p" "$FILEPATH" | tr -d '\r')
 outputs_var=$(sed -n "6p" "$FILEPATH" | tr -d '\r')
 formula=$(sed -n "4p" "$FILEPATH" | tr -d '\r')
 
-cmd_string="$CLI_TOOL --formula=\"$formula\" --model-name=\"$benchmark_name\" --algo={{ALGORITHM}}"
+if [[ -z "$formula" ]]; then
+    echo "Warning: Formula is empty for $benchmark_name ($FILEPATH), skipping."
+    exit 0
+fi
+
+DEPENDENCY_TIMEOUT="{{FIND_DEP_TIMEOUT}}"
+cmd_string="$CLI_TOOL --formula=\"$formula\" --model-name=\"$benchmark_name\" --dependency-timeout=$DEPENDENCY_TIMEOUT --algo={{ALGORITHM}}"
 if [[ -n "$inputs_var" ]]; then
     cmd_string="$cmd_string --input=\"$inputs_var\""
 fi

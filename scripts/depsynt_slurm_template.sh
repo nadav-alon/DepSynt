@@ -5,7 +5,7 @@
 #SBATCH --error={{OUTPUT_BASE_PATH}}/%a.err
 #SBATCH --array=1-{{NUM_BENCHMARKS}}
 #SBATCH --ntasks=1
-#SBATCH --mem=2G
+#SBATCH --mem=8G
 #SBATCh --cpus-per-task=1
 
 TOTAL_TIMEOUT="{{TIMEOUT}}"

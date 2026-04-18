@@ -103,6 +103,7 @@ def generate_find_deps(args, approach):
         'TIMEOUT': args.timeout,
         'BENCHMARKS_DIR': benchmarks_path,
         'ALGORITHM': approach,
+        'FIND_DEP_TIMEOUT': '12000',
     }
 
     for var_name, var_value in variables.items():

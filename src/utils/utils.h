@@ -46,6 +46,8 @@ struct FindUnatesCLIOptions : public BaseCLIOptions {
 struct FindDependenciesCLIOptions : public BaseCLIOptions {
     Algorithm algorithm{UNKNOWN};
     bool find_input_dependencies{};
+    int dependency_timeout{0};
+    std::string model_name;
     std::string dependency_transducer_path;
 };
 

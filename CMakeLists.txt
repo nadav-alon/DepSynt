@@ -46,27 +46,43 @@ configure_file(./src/utils/config.h.in ./src/utils/config.h)
 # Define paths to look for Spot and ABC
 set(SPOT_SEARCH_DIRS 
     "${PROJECT_SOURCE_DIR}/libs/spot/inst"
-    "${MAIN_REPO_ROOT}/libs/spot/inst")
+    "${MAIN_REPO_ROOT}/libs/spot/inst"
+    "${PROJECT_SOURCE_DIR}/hpc_deps/usr/lib"
+    "${PROJECT_SOURCE_DIR}/hpc_deps/usr/lib/x86_64-linux-gnu"
+    "${PROJECT_SOURCE_DIR}/hpc_deps/lib")
 
 set(ABC_SEARCH_DIRS 
     "${PROJECT_SOURCE_DIR}/libs/abc"
     "${MAIN_REPO_ROOT}/libs/abc"
+    "${PROJECT_SOURCE_DIR}/hpc_deps/lib"
     "/usr/local/lib"
     "/usr/lib")
 
+set(BOOST_SEARCH_DIRS
+    "${PROJECT_SOURCE_DIR}/hpc_deps/usr/lib"
+    "${PROJECT_SOURCE_DIR}/hpc_deps/usr/lib/x86_64-linux-gnu"
+    "${PROJECT_SOURCE_DIR}/hpc_deps/lib")
+
 # Include ABC package
-find_library(abc_location NAMES libabc.so PATHS ${ABC_SEARCH_DIRS})
+# Forced static: Look ONLY for .a files first
+find_library(abc_location NAMES libabc.a PATHS ${ABC_SEARCH_DIRS} NO_DEFAULT_PATH)
 if (NOT abc_location)
-    message(FATAL_ERROR "ABC library not found")
+    find_library(abc_location NAMES libabc.a abc PATHS ${ABC_SEARCH_DIRS})
+endif()
+if (NOT abc_location)
+    message(FATAL_ERROR "ABC static library (libabc.a) not found")
 endif ()
 message(STATUS "Found ABC location at ${abc_location}")
 add_library(abc STATIC IMPORTED)
 set_target_properties(abc PROPERTIES IMPORTED_LOCATION ${abc_location})
 
 # Include Boots Options package
-find_library(boost_options_location NAMES libboost_program_options.so)
+find_library(boost_options_location NAMES libboost_program_options.a PATHS ${BOOST_SEARCH_DIRS} NO_DEFAULT_PATH)
 if (NOT boost_options_location)
-    message(FATAL_ERROR "Boost-options library not found")
+    find_library(boost_options_location NAMES libboost_program_options.a boost_program_options)
+endif()
+if (NOT boost_options_location)
+    message(FATAL_ERROR "Boost-options static library (libboost_program_options.a) not found")
 endif ()
 message(STATUS "Found BoostOptions location at ${boost_options_location}")
 add_library(boost_options STATIC IMPORTED)
@@ -76,18 +92,24 @@ set_target_properties(boost_options PROPERTIES IMPORTED_LOCATION ${boost_options
 # Priorities: CMAKE_PREFIX_PATH (e.g. hpc_deps) -> Local libs/spot/inst -> System
 
 # Include BDDX package
-find_library(bddx_location NAMES bddx bddx.a PATHS ${SPOT_SEARCH_DIRS})
+find_library(bddx_location NAMES libbddx.a PATHS ${SPOT_SEARCH_DIRS} NO_DEFAULT_PATH)
 if (NOT bddx_location)
-    message(FATAL_ERROR "BDDX library not found")
+    find_library(bddx_location NAMES libbddx.a bddx PATHS ${SPOT_SEARCH_DIRS})
+endif()
+if (NOT bddx_location)
+    message(FATAL_ERROR "BDDX static library (libbddx.a) not found")
 endif ()
 message(STATUS "Found bddx location at ${bddx_location}")
 add_library(bddx STATIC IMPORTED)
 set_target_properties(bddx PROPERTIES IMPORTED_LOCATION ${bddx_location})
 
 # Include spot package
-find_library(spot_location NAMES spot spot.a PATHS ${SPOT_SEARCH_DIRS})
+find_library(spot_location NAMES libspot.a PATHS ${SPOT_SEARCH_DIRS} NO_DEFAULT_PATH)
 if (NOT spot_location)
-    message(FATAL_ERROR "Spot library not found")
+    find_library(spot_location NAMES libspot.a spot PATHS ${SPOT_SEARCH_DIRS})
+endif()
+if (NOT spot_location)
+    message(FATAL_ERROR "Spot static library (libspot.a) not found")
 endif ()
 message(STATUS "Found spot location at ${spot_location}")
 add_library(spot STATIC IMPORTED)

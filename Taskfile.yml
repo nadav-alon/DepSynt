@@ -239,6 +239,16 @@ tasks:
       - ssh {{.HPC_HOST}} "mkdir -p {{.HPC_REMOTE_DIR}}"
       - rsync -avz --exclude '.git' --exclude 'build/' --exclude 'tasks_output/' --exclude 'tasks_output_hpc/' --exclude 'CMakeCache.txt' --exclude 'CMakeFiles/' --exclude 'cmake_install.cmake' --exclude 'Makefile' --exclude 'compile_commands.json' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
 
+  hpc:full_process:find_input_deps:
+    desc: Automates Sync -> Build -> Run -> Fetch for input dependencies
+    cmds:
+      - task: hpc:sync
+      - task: hpc:build
+      - task: hpc:run:find_input_deps
+      - task: hpc:monitor
+      - task: hpc:fetch
+
+
   hpc:build:
     desc: Build the project on HPC using sbatch hpc_build.sh
     cmds:
@@ -275,7 +285,7 @@ tasks:
     desc: Fetch benchmark results from HPC
     cmds:
       - mkdir -p ./tasks_output_hpc
-      - scp -r {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/tasks_output/* ./tasks_output_hpc/
+      - rsync -avz --exclude 'generated_benchmarks' {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/tasks_output/ ./tasks_output_hpc/
       - echo "Results fetched to ./tasks_output_hpc"
 
   hpc:summary:

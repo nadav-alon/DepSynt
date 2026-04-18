@@ -5,12 +5,13 @@
 #SBATCH --error={{OUTPUT_BASE_PATH}}/%a.err
 #SBATCH --array=1-{{NUM_BENCHMARKS}}
 #SBATCH --ntasks=1
-#SBATCH --mem=4G
+#SBATCH --mem=8G
 #SBATCh --cpus-per-task=1
 
 TOTAL_TIMEOUT="{{TIMEOUT}}"
 CLI_TOOL="./find_input_dependencies"
 BENCHMARKS_DIR="{{BENCHMARKS_DIR}}"
+DEPENDENCY_TIMEOUT="{{FIND_DEP_TIMEOUT}}"
 SEARCH_PATH="$(pwd)/hpc_deps"
 
 # Setup environment
@@ -38,7 +39,12 @@ else
     outputs_var=$(sed -n "8p" "$FILEPATH" | tr -d '\r')
 fi
 
-cmd_string="$CLI_TOOL --formula=\"$formula\" --verbose --algo={{ALGORITHM}}"
+if [[ -z "$formula" ]]; then
+    echo "Warning: Formula is empty for $benchmark_name ($FILEPATH), skipping."
+    exit 0
+fi
+
+cmd_string="$CLI_TOOL --formula=\"$formula\" --model-name=\"$benchmark_name\" --dependency-timeout=$DEPENDENCY_TIMEOUT --verbose --algo={{ALGORITHM}}"
 if [[ -n "$inputs_var" ]]; then
     cmd_string="$cmd_string --input=\"$inputs_var\""
 fi

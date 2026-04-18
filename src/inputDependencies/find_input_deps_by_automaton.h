@@ -65,8 +65,6 @@ class FindInputDepsByAutomaton {
         }
 
         m_bdd_cacher = new BDDVarsCacher(m_automaton);
-
-        m_bdd_cacher = new BDDVarsCacher(m_automaton);
     }
 
     ~FindInputDepsByAutomaton() {
