@@ -4,6 +4,7 @@ project(reactive-synthesis-bfss)
 set(CMAKE_CXX_STANDARD 17)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+include_directories(${PROJECT_BINARY_DIR}/src/utils)
 
 # Detect Git Root and Main Repository (for Worktree fallback)
 execute_process(COMMAND git rev-parse --path-format=absolute --git-common-dir
@@ -25,6 +26,7 @@ add_executable(find_input_dependencies ${non_executable_SRC} ${aiger_lib_SRC} bi
 add_executable(depsynt ${non_executable_SRC} ${aiger_lib_SRC} bins/synthesis.cpp)
 add_executable(inp_dep_synthesis ${non_executable_SRC} ${aiger_lib_SRC} bins/inp_dep_synthesis.cpp)
 add_executable(simulate_aiger ${non_executable_SRC} ${aiger_lib_SRC} bins/simulate_aiger.cpp)
+add_executable(test_aiger_builder ${non_executable_SRC} ${aiger_lib_SRC} bins/test_aiger_builder.cpp)
 
 list(APPEND CMAKE_PREFIX_PATH "./libs/spot" "./libs/abc" "${MAIN_REPO_ROOT}/libs/abc")
 include_directories(./libs/abc/src ${MAIN_REPO_ROOT}/libs/abc/src)
@@ -39,7 +41,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/findDeps ${PROJECT_SOURCE_DIR}/src
                     ${MAIN_REPO_ROOT}/src/findDeps ${MAIN_REPO_ROOT}/src/models ${MAIN_REPO_ROOT}/src/synthesis ${MAIN_REPO_ROOT}/src/utils ${MAIN_REPO_ROOT}/src/unates ${MAIN_REPO_ROOT}/src/inputDependencies)
 
 # Configuration
-option(TEMP_DIRECTORY "Directory to store temporary files" "./")
+set(TEMP_DIRECTORY "./" CACHE STRING "Directory to store temporary files")
 configure_file(./src/utils/config.h.in ./src/utils/config.h)
 
 
@@ -116,3 +118,4 @@ target_link_libraries(find_input_dependencies boost_options spot bddx abc Thread
 target_link_libraries(depsynt boost_options spot bddx abc Threads::Threads)
 target_link_libraries(inp_dep_synthesis boost_options spot bddx abc Threads::Threads)
 target_link_libraries(simulate_aiger boost_options spot bddx abc Threads::Threads)
+target_link_libraries(test_aiger_builder boost_options spot bddx abc Threads::Threads)
