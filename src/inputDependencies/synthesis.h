@@ -141,6 +141,20 @@ bool synthesise_input_dependents(
     spot::aig_ptr& deps_strategy,
     const vector<string>& ignored_vars);
 
+bool decompose_synthesis_only_input_dependents(
+    SynthesisCLIOptions& options,
+    SynthesisMeasure& synt_measure,
+    spot::synthesis_info& gi,
+    SyntInstance& synt_instance,
+    spot::twa_graph_ptr& nba,
+    vector<string>& input_vars,
+    vector<string>& output_vars,
+    ostream& verbose,
+    spot::aig_ptr& deps_strategy,
+    vector<string>& independent_variables,
+    vector<string>& dependent_variables,
+    const vector<string>& ignored_vars);
+
 bool decompose_synthesis_only_input_dependents_as_aut(
     SynthesisCLIOptions& options,
     SynthesisMeasure& synt_measure,

@@ -55,8 +55,8 @@ spot::aig_ptr InputDependentsSynthesiser::compose_transition_and_dependency_aige
     std::vector<std::string> comp_outputs;
     for (unsigned i = 0; i < num_state_bits_nba; ++i) comp_outputs.push_back("next_s" + std::to_string(i));
     for (unsigned i = 0; i < num_state_bits_dep; ++i) comp_outputs.push_back("next_s" + std::to_string(num_state_bits_nba + i));
-    for (const auto& var : dep_vars) comp_outputs.push_back(var);
     for (unsigned i = 0; i < num_acc_bits; ++i) comp_outputs.push_back("acc" + std::to_string(i));
+    for (const auto& var : dep_vars) comp_outputs.push_back(var);
 
     auto comp_aiger = std::make_shared<aig>(comp_inputs, comp_outputs, 0, dict);
 
@@ -122,8 +122,8 @@ spot::aig_ptr InputDependentsSynthesiser::compose_transition_and_dependency_aige
     unsigned out_idx = 0;
     for (unsigned i = 0; i < num_state_bits_nba; ++i) comp_aiger->set_output(out_idx++, trans_nba(nba_aiger->output(i)));
     for (unsigned i = 0; i < num_state_bits_dep; ++i) comp_aiger->set_output(out_idx++, trans_dep(dep_aiger->output(dep_vars.size() + i)));
-    for (unsigned i = 0; i < dep_vars.size(); ++i) comp_aiger->set_output(out_idx++, dep_var_gates[dep_vars[i]]);
     for (unsigned i = 0; i < num_acc_bits; ++i) comp_aiger->set_output(out_idx++, trans_nba(nba_aiger->output(num_state_bits_nba + i)));
+    for (unsigned i = 0; i < dep_vars.size(); ++i) comp_aiger->set_output(out_idx++, dep_var_gates[dep_vars[i]]);
 
     return comp_aiger;
 }

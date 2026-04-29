@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(reactive-synthesis-bfss)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-protector")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 include_directories(${PROJECT_BINARY_DIR}/src/utils)

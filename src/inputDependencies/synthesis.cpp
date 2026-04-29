@@ -439,11 +439,11 @@ bool synthesise_input_dependents(
     return true;
 }
 
-bool decompose_synthesis_only_input_dependents_as_aut(
+bool decompose_synthesis_only_input_dependents(
     SynthesisCLIOptions& options, SynthesisMeasure& synt_measure,
     spot::synthesis_info& gi, SyntInstance& synt_instance, spot::twa_graph_ptr& nba,
     vector<string>& input_vars, vector<string>& output_vars, ostream& verbose,
-    spot::twa_graph_ptr& deps_strategy_aut, vector<string>& independent_variables,
+    spot::aig_ptr& deps_strategy, vector<string>& independent_variables,
     vector<string>& dependent_variables, const vector<string>& ignored_vars)
 {
     twa_graph_ptr negated_nba = construct_automaton_negation(synt_instance, gi.dict);
@@ -466,8 +466,7 @@ bool decompose_synthesis_only_input_dependents_as_aut(
                                    negated_nba_without_deps,
                                    bdd_to_bdd_without_deps);
 
-    spot::aig_ptr deps_strategy = nullptr;
-    if (!synthesise_input_dependents(options,
+    return synthesise_input_dependents(options,
                                      synt_measure,
                                      negated_nba_without_deps,
                                      negated_nba_with_deps,
@@ -477,7 +476,19 @@ bool decompose_synthesis_only_input_dependents_as_aut(
                                      dependent_variables,
                                      bdd_to_bdd_without_deps,
                                      deps_strategy,
-                                     ignored_vars)) {
+                                     ignored_vars);
+}
+
+bool decompose_synthesis_only_input_dependents_as_aut(
+    SynthesisCLIOptions& options, SynthesisMeasure& synt_measure,
+    spot::synthesis_info& gi, SyntInstance& synt_instance, spot::twa_graph_ptr& nba,
+    vector<string>& input_vars, vector<string>& output_vars, ostream& verbose,
+    spot::twa_graph_ptr& deps_strategy_aut, vector<string>& independent_variables,
+    vector<string>& dependent_variables, const vector<string>& ignored_vars)
+{
+    spot::aig_ptr deps_strategy = nullptr;
+    if (!decompose_synthesis_only_input_dependents(options, synt_measure, gi, synt_instance, nba, input_vars, output_vars, verbose,
+                                                   deps_strategy, independent_variables, dependent_variables, ignored_vars)) {
         return false;
     }
 

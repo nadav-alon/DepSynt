@@ -8,6 +8,8 @@
 #include <spot/twaalgos/product.hh>
 #include <spot/tl/relabel.hh>
 #include <spot/tl/parse.hh>
+#include "automaton_aiger_builder.h"
+#include "input_dependents_synthesiser.h"
 #include <iostream>
 #include <sstream>
 
@@ -32,8 +34,8 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     SynthesisCLIOptions dependant_synthesis_opts;
 
     dependant_synthesis_opts.formula = options.env_formula;
-    dependant_synthesis_opts.inputs = options.outputs;
-    dependant_synthesis_opts.outputs = options.inputs;
+    dependant_synthesis_opts.inputs = options.inputs;
+    dependant_synthesis_opts.outputs = options.outputs;
     dependant_synthesis_opts.verbose = options.verbose;
     dependant_synthesis_opts.measures_path = options.measures_path;
 
@@ -43,7 +45,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     dependant_synthesis_opts.skip_unates = true;
     dependant_synthesis_opts.dependency_timeout = options.dependency_timeout;
 
-    auto* synt_instance = new SyntInstance(options.outputs, options.inputs, dependant_synthesis_opts.formula);
+    auto* synt_instance = new SyntInstance(options.inputs, options.outputs, dependant_synthesis_opts.formula);
 
     measure = new InpDepSyntMeasure(*synt_instance, options.measure_bdd, false);
     InpDepSyntMeasure& dependent_measure = static_cast<InpDepSyntMeasure&>(*measure);
@@ -60,8 +62,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
         verbose
     );
 
-    twa_graph_ptr deps_strategy_aut = nullptr; 
-
+    spot::aig_ptr deps_strategy = nullptr; 
 
     vector<string> independent_variables;
     vector<string> dependent_variables;
@@ -72,59 +73,22 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     auto output_vars = synt_instance->get_output_vars();
     auto input_vars = synt_instance->get_input_vars();
 
-    bool dep_realizable;
-        dep_realizable = decompose_synthesis_only_input_dependents_as_aut(dependant_synthesis_opts,
-                                                   dependent_measure,
-                                                   gi,
-                                                   *synt_instance,
-                                                   deps_nba,
-                                                   input_vars,
-                                                   output_vars,
-                                                   verbose,
-                                                   deps_strategy_aut,
-                                                   independent_variables,
-                                                   dependent_variables,
-                                                   ignored_vars
-                                                   );
+    bool dep_realizable = decompose_synthesis_only_input_dependents(dependant_synthesis_opts,
+                                               dependent_measure,
+                                               gi,
+                                               *synt_instance,
+                                               deps_nba,
+                                               input_vars,
+                                               output_vars,
+                                               verbose,
+                                               deps_strategy,
+                                               independent_variables,
+                                               dependent_variables,
+                                               ignored_vars);
 
     if (!dep_realizable) {
         return EXIT_FAILURE;
     }
-    
-    auto product_aut = deps_strategy_aut != nullptr ? spot::product(deps_nba, deps_strategy_aut) : deps_nba;
-
-    if (project && deps_strategy_aut != nullptr) {
-        // 1. Retrieve the mapping from product states to original state pairs
-        auto ps = product_aut->get_named_prop<spot::product_states>("product-states");
-        
-        // 2. Create a new graph with the same dictionary as the NBA
-        auto projected_aut = spot::make_twa_graph(deps_nba->get_dict());
-        
-        // 3. Ensure it has the same number of states as the original NBA
-        for (unsigned i = 0; i < deps_nba->num_states(); ++i)
-            projected_aut->new_state();
-            
-        // 4. Iterate over all transitions in the product and "forget" the strategy component
-        for (unsigned s = 0; s < product_aut->num_states(); ++s) {
-            unsigned s_nba = (*ps)[s].first; // The state ID in the original NBA
-            for (auto& edge : product_aut->out(s)) {
-                unsigned dst_nba = (*ps)[edge.dst].first;
-                // Add the transition to the new graph using NBA state IDs
-                projected_aut->new_edge(s_nba, dst_nba, edge.cond, edge.acc);
-            }
-        }
-        
-        // 5. Restore initial state and acceptance info
-        projected_aut->set_init_state(deps_nba->get_init_state_number());
-        projected_aut->copy_acceptance_of(deps_nba);
-        
-        // 6. Clean up: merge parallel transitions that might have been created
-        projected_aut->merge_edges();
-        
-        product_aut = projected_aut;
-    }
-    
-    product_aut = spot::scc_filter_states(product_aut);
 
 
     final_strategy = nullptr;
@@ -152,8 +116,21 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     );
 
     twa_graph_ptr final_synthesis_aut = full_nba;
-    if (deps_strategy_aut != nullptr) {
-        final_synthesis_aut = spot::product(full_nba, deps_strategy_aut);
+    if (deps_strategy != nullptr) {
+        auto full_nba_aiger = AutomatonAigerBuilder::construct_transition_aiger(full_nba);
+        auto composed_aiger = InputDependentsSynthesiser::compose_transition_and_dependency_aigers(
+            full_nba_aiger, deps_strategy, independent_variables, dependent_variables, output_vars, full_nba->get_dict());
+            
+        vector<string> combined_ap_names = independent_variables;
+        combined_ap_names.insert(combined_ap_names.end(), output_vars.begin(), output_vars.end());
+
+        unsigned num_state_bits_dep = 0;
+        while (num_state_bits_dep < deps_strategy->input_names().size() && 
+               deps_strategy->input_names()[num_state_bits_dep].find("curr_s") == 0) num_state_bits_dep++;
+        
+        unsigned num_states_combined = full_nba->num_states() * (1 << num_state_bits_dep);
+
+        final_synthesis_aut = AutomatonAigerBuilder::aiger_to_automaton(composed_aiger, num_states_combined, combined_ap_names, full_nba->get_dict(), full_nba->get_acceptance());
         final_synthesis_aut = spot::scc_filter_states(final_synthesis_aut);
     }
 

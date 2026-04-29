@@ -6,7 +6,7 @@ import sys
 
 # Locate the root of the project
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-BINARY = os.path.join(ROOT_DIR, "inp_dep_synthesis")
+BINARY = os.path.join(ROOT_DIR, "build", "inp_dep_synthesis")
 BENCHMARKS_FILE = os.path.join(os.path.dirname(__file__), "benchmarks/verification_suite.json")
 
 def run_synthesis(env, sys_formula, inputs, outputs, algorithm):
@@ -20,7 +20,7 @@ def run_synthesis(env, sys_formula, inputs, outputs, algorithm):
         "--verbose"
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=ROOT_DIR)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=os.path.join(ROOT_DIR, "build"))
         output = result.stdout + result.stderr
         
         # Realizable if "Strategy found" is in output

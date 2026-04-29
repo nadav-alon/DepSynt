@@ -112,6 +112,7 @@ bool FindInputDepsByAutomaton::is_variable_dependent(std::string var,
     }
 
     if(use_single_bdd) {
+        bool checked_any = false;
         for (auto pairState : compatibleStates) {
             if(m_stop_flag.load()) return false;
             
@@ -121,13 +122,20 @@ bool FindInputDepsByAutomaton::is_variable_dependent(std::string var,
             if(are_states_collides_by_edges(m_automaton, pairState.second, pairState.first, dependent_var_num)) {
                 return false;
             }
+            // If the state has outgoing edges, we've checked something
+            if(m_automaton->out(pairState.first).begin() != m_automaton->out(pairState.first).end() ||
+               m_automaton->out(pairState.second).begin() != m_automaton->out(pairState.second).end()) {
+                checked_any = true;
+            }
         }
-        return true;
+        return checked_any;
     } else {
+        bool checked_any = false;
         for (auto pairState : compatibleStates) {
             if(m_stop_flag.load()) return false;
             for (auto& t1 : m_automaton->out(pairState.first)) {
                 for (auto& t2 : m_automaton->out(pairState.second)) {
+                    checked_any = true;
                     PairEdges pair_edges = PairEdges(t1, t2);
 
                     if (!this->is_dependent_by_pair_edges(
@@ -138,7 +146,7 @@ bool FindInputDepsByAutomaton::is_variable_dependent(std::string var,
                 }
             }
         }
-        return true;
+        return checked_any;
     }
 }
 
