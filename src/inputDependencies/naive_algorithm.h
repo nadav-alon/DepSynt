@@ -7,7 +7,6 @@
 
 int naive(InputDependenciesCLIOptions& options, 
           spot::aig_ptr& final_strategy, 
-          SynthesisMeasure*& measure, 
-          bool project);
+          SynthesisMeasure*& measure);
 
 #endif // NAIVE_ALGORITHM_H

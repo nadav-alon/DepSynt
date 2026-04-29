@@ -47,11 +47,11 @@ def verify_all():
     with open(BENCHMARKS_FILE, "r") as f:
         benchmarks = json.load(f)
 
-    algorithms = ["ultra_naive", "naive", "naive_projected"]
+    algorithms = ["ultra_naive", "naive"]
     all_success = True
 
-    print(f"{'Benchmark':<40} | {'Ultra Naive':<15} | {'Naive':<15} | {'Naive Projected':<15} | {'Verdict'}")
-    print("-" * 110)
+    print(f"{'Benchmark':<40} | {'Ultra Naive':<15} | {'Naive':<15} | {'Verdict'}")
+    print("-" * 90)
 
     for b in benchmarks:
         results = {}
@@ -61,17 +61,16 @@ def verify_all():
         
         un_res = results["ultra_naive"]
         n_res = results["naive"]
-        np_res = results["naive_projected"]
         
         # Verdict: All results should match ultra_naive (baseline)
-        match = (un_res == n_res == np_res)
+        match = (un_res == n_res)
         
         expected = b["expected"]
         status = "PASS" if match else "FAIL"
         if match and un_res != expected:
             status = "PASS (Mismatch expected)"
         
-        results_str = f"{b['name']:<40} | {un_res:<15} | {n_res:<15} | {np_res:<15} | {status}"
+        results_str = f"{b['name']:<40} | {un_res:<15} | {n_res:<15} | {status}"
         print(results_str)
         if not match:
             all_success = False

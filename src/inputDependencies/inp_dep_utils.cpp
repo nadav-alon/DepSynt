@@ -31,7 +31,7 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
         ("model-name,n", Options::value<string>(&options.model_name)->default_value("model"),
          "Model name")
         ("algorithm,l", Options::value<string>()->default_value("ultra_naive"),
-         "Algorithm to use: ultra_naive, naive, naive_projected")
+         "Algorithm to use: ultra_naive, naive")
         ("help,h", "Produce help message");
 
     // Check if help is requested
@@ -85,8 +85,6 @@ Inp_Dep_Algorithm string_to_inp_dep_algorithm(const std::string &str) {
         return ULTRA_NAIVE;
     } else if (str == "naive") {
         return NAIVE;
-    } else if (str == "naive_projected") {
-        return NAIVE_PROJECTED;
     } else {
         return ULTRA_NAIVE;
     }
@@ -98,8 +96,6 @@ std::string inp_dep_algorithm_to_string(Inp_Dep_Algorithm algo) {
             return "ultra_naive";
         case NAIVE:
             return "naive";
-        case NAIVE_PROJECTED:
-            return "naive_projected";
         default:
             return "unknown";
     }

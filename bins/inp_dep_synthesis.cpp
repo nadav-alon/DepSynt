@@ -43,10 +43,7 @@ int main(int argc, const char* argv[]) {
             ultra_naive(options, final_strategy, g_synt_measure);
             break;
         case Inp_Dep_Algorithm::NAIVE:
-            naive(options, final_strategy, g_synt_measure, false);
-            break;
-        case Inp_Dep_Algorithm::NAIVE_PROJECTED:
-            naive(options, final_strategy, g_synt_measure, true);
+            naive(options, final_strategy, g_synt_measure);
             break;
     }
 

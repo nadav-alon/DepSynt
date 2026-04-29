@@ -3,7 +3,7 @@
 
 #include "utils.h"
 
-enum Inp_Dep_Algorithm { ULTRA_NAIVE = 0, NAIVE = 1, NAIVE_PROJECTED = 2};
+enum Inp_Dep_Algorithm { ULTRA_NAIVE = 0, NAIVE = 1 };
 
 Inp_Dep_Algorithm string_to_inp_dep_algorithm(const std::string &str);
 std::string inp_dep_algorithm_to_string(Inp_Dep_Algorithm algo);

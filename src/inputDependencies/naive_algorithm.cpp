@@ -21,7 +21,7 @@ struct NullBuffer : std::streambuf {
     int overflow(int c) override { return c; }
 };
 
-int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, SynthesisMeasure*& measure, bool project) {
+int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, SynthesisMeasure*& measure) {
 
     NullBuffer nullbuf;
     ostream nullout(&nullbuf);
