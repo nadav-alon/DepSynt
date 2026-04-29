@@ -1,15 +1,12 @@
 #ifndef INPUT_DEPENDENTS_SYNTHESISER_H
 #define INPUT_DEPENDENTS_SYNTHESISER_H
 
-#include <algorithm>
-#include <iostream>
 #include <spot/tl/parse.hh>
 #include <spot/twa/fwd.hh>
 #include <spot/twa/twa.hh>
 #include <spot/twa/twagraph.hh>
 #include <spot/twaalgos/aiger.hh>
 #include <string>
-#include <utility>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
@@ -35,14 +32,29 @@ class InputDependentsSynthesiser {
     Realizability m_is_realizable;
     
     bdd m_output_vars_bdd;
+    std::unordered_map<int, Gate> m_bdd_to_gate_map;
 
     void init_aiger();
-    void define_next_latches();
-    void define_output_gates();
+    void define_next_state_logic();
+    void define_dependency_logic();
+
+    static unsigned count_bits(unsigned n) {
+        if (n <= 1) return 0u;
+        unsigned bits = 0;
+        unsigned m = n - 1;
+        while (m > 0) {
+            m >>= 1;
+            bits++;
+        }
+        return bits;
+    }
 
     Gate get_partial_impl(const bdd& cond, std::string& dep_var);
     Gate generate_partial_impl(const bdd& cond, std::string& dep_var,
                                std::unordered_map<int, Gate>& bdd_partial_impl);
+
+    Gate bdd_to_gate(const bdd& cond, std::unordered_map<int, Gate>& cache);
+    Gate safe_aig_or(std::vector<Gate>& vs);
 
     BDDVar ap_to_bdd_varnum(std::string& ap) {
         return m_nba_with_deps->register_ap(ap);
@@ -72,6 +84,14 @@ class InputDependentsSynthesiser {
     };
 
     spot::aig_ptr synthesis();
+
+    static spot::aig_ptr compose_transition_and_dependency_aigers(
+        const spot::aig_ptr& nba_aiger,
+        const spot::aig_ptr& dep_aiger,
+        const std::vector<std::string>& indep_vars,
+        const std::vector<std::string>& dep_vars,
+        const std::vector<std::string>& output_vars,
+        const spot::bdd_dict_ptr& dict);
 };
 
 #endif

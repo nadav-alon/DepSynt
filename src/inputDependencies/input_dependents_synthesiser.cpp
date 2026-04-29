@@ -1,20 +1,19 @@
 #include "input_dependents_synthesiser.h"
-#include <algorithm>
-#include <iostream>
 #include <spot/tl/parse.hh>
 #include <spot/tl/print.hh>
 #include <spot/twaalgos/aiger.hh>
 #include <spot/twaalgos/translate.hh>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 using namespace std;
 using namespace spot;
 
 spot::aig_ptr InputDependentsSynthesiser::synthesis() {
     init_aiger();
-    define_next_latches();
-    define_output_gates();
+    define_next_state_logic();
+    define_dependency_logic();
 
     if (m_is_realizable == Realizability::UNREALIZABLE) {
         return nullptr;
@@ -22,178 +21,290 @@ spot::aig_ptr InputDependentsSynthesiser::synthesis() {
     return m_aiger;
 }
 
+spot::aig_ptr InputDependentsSynthesiser::compose_transition_and_dependency_aigers(
+    const spot::aig_ptr& nba_aiger,
+    const spot::aig_ptr& dep_aiger,
+    const std::vector<std::string>& indep_vars,
+    const std::vector<std::string>& dep_vars,
+    const std::vector<std::string>& output_vars,
+    const spot::bdd_dict_ptr& dict) {
+
+    unsigned num_state_bits_nba = 0;
+    while (num_state_bits_nba < nba_aiger->input_names().size() && 
+           nba_aiger->input_names()[num_state_bits_nba].find("curr_s") == 0) num_state_bits_nba++;
+
+    unsigned num_state_bits_dep = 0;
+    while (num_state_bits_dep < dep_aiger->input_names().size() && 
+           dep_aiger->input_names()[num_state_bits_dep].find("curr_s") == 0) num_state_bits_dep++;
+
+    unsigned num_choice_bits = 0;
+    while (num_choice_bits < nba_aiger->input_names().size() &&
+           nba_aiger->input_names()[nba_aiger->input_names().size() - 1 - num_choice_bits].find("choice") == 0) num_choice_bits++;
+
+    unsigned num_acc_bits = 0;
+    while (num_acc_bits < nba_aiger->output_names().size() &&
+           nba_aiger->output_names()[nba_aiger->output_names().size() - 1 - num_acc_bits].find("acc") == 0) num_acc_bits++;
+
+    std::vector<std::string> comp_inputs;
+    for (unsigned i = 0; i < num_state_bits_nba; ++i) comp_inputs.push_back("curr_s" + std::to_string(i));
+    for (unsigned i = 0; i < num_state_bits_dep; ++i) comp_inputs.push_back("curr_s" + std::to_string(num_state_bits_nba + i));
+    for (const auto& var : indep_vars) comp_inputs.push_back(var);
+    for (const auto& var : output_vars) comp_inputs.push_back(var);
+    for (unsigned i = 0; i < num_choice_bits; ++i) comp_inputs.push_back("choice" + std::to_string(i));
+
+    std::vector<std::string> comp_outputs;
+    for (unsigned i = 0; i < num_state_bits_nba; ++i) comp_outputs.push_back("next_s" + std::to_string(i));
+    for (unsigned i = 0; i < num_state_bits_dep; ++i) comp_outputs.push_back("next_s" + std::to_string(num_state_bits_nba + i));
+    for (const auto& var : dep_vars) comp_outputs.push_back(var);
+    for (unsigned i = 0; i < num_acc_bits; ++i) comp_outputs.push_back("acc" + std::to_string(i));
+
+    auto comp_aiger = std::make_shared<aig>(comp_inputs, comp_outputs, 0, dict);
+
+    auto translate_gates = [&](const aig_ptr& src_aiger, const std::unordered_map<unsigned, Gate>& input_mapping) {
+        auto gate_translations = std::make_shared<std::vector<Gate>>(src_aiger->num_gates());
+        auto get_translated_gate = [comp_aiger, src_aiger, input_mapping, gate_translations](Gate g) -> Gate {
+            if (g == src_aiger->aig_true()) return comp_aiger->aig_true();
+            if (g == src_aiger->aig_false()) return comp_aiger->aig_false();
+            bool is_not = (g % 2 != 0);
+            Gate g_pos = is_not ? g - 1 : g;
+            unsigned v_idx = (g_pos / 2) - 1;
+            Gate res;
+            if (v_idx < src_aiger->num_inputs() + src_aiger->num_latches()) res = input_mapping.at(v_idx);
+            else res = gate_translations->at(v_idx - src_aiger->num_inputs() - src_aiger->num_latches());
+            return is_not ? comp_aiger->aig_not(res) : res;
+        };
+        const auto& src_gates = src_aiger->gates();
+        for (unsigned i = 0; i < src_gates.size(); ++i) {
+            (*gate_translations)[i] = comp_aiger->aig_and(get_translated_gate(src_gates[i].first), get_translated_gate(src_gates[i].second));
+        }
+        return get_translated_gate;
+    };
+
+    std::unordered_map<unsigned, Gate> dep_input_mapping;
+    for (unsigned i = 0; i < dep_aiger->input_names().size(); ++i) {
+        std::string name = dep_aiger->input_names()[i];
+        if (name.find("curr_s") == 0) {
+            unsigned idx = std::stoi(name.substr(6));
+            dep_input_mapping[i] = comp_aiger->input_var(num_state_bits_nba + idx);
+        } else {
+            bool found = false;
+            for (unsigned j = 0; j < comp_inputs.size(); ++j) {
+                if (comp_inputs[j] == name) { dep_input_mapping[i] = comp_aiger->input_var(j); found = true; break; }
+            }
+            if (!found) dep_input_mapping[i] = comp_aiger->aig_false();
+        }
+    }
+    auto trans_dep = translate_gates(dep_aiger, dep_input_mapping);
+    std::unordered_map<std::string, Gate> dep_var_gates;
+    for (unsigned i = 0; i < dep_vars.size(); ++i) dep_var_gates[dep_vars[i]] = trans_dep(dep_aiger->output(i));
+
+    std::unordered_map<unsigned, Gate> nba_input_mapping;
+    for (unsigned i = 0; i < nba_aiger->input_names().size(); ++i) {
+        std::string name = nba_aiger->input_names()[i];
+        if (name.find("curr_s") == 0) {
+            unsigned idx = std::stoi(name.substr(6));
+            nba_input_mapping[i] = comp_aiger->input_var(idx);
+        } else if (name.find("choice") == 0) {
+            unsigned idx = std::stoi(name.substr(6));
+            nba_input_mapping[i] = comp_aiger->input_var(num_state_bits_nba + num_state_bits_dep + indep_vars.size() + output_vars.size() + idx);
+        } else if (dep_var_gates.count(name)) {
+            nba_input_mapping[i] = dep_var_gates[name];
+        } else {
+            bool found = false;
+            for (unsigned j = 0; j < comp_inputs.size(); ++j) {
+                if (comp_inputs[j] == name) { nba_input_mapping[i] = comp_aiger->input_var(j); found = true; break; }
+            }
+            if (!found) nba_input_mapping[i] = comp_aiger->aig_false();
+        }
+    }
+    auto trans_nba = translate_gates(nba_aiger, nba_input_mapping);
+
+    unsigned out_idx = 0;
+    for (unsigned i = 0; i < num_state_bits_nba; ++i) comp_aiger->set_output(out_idx++, trans_nba(nba_aiger->output(i)));
+    for (unsigned i = 0; i < num_state_bits_dep; ++i) comp_aiger->set_output(out_idx++, trans_dep(dep_aiger->output(dep_vars.size() + i)));
+    for (unsigned i = 0; i < dep_vars.size(); ++i) comp_aiger->set_output(out_idx++, dep_var_gates[dep_vars[i]]);
+    for (unsigned i = 0; i < num_acc_bits; ++i) comp_aiger->set_output(out_idx++, trans_nba(nba_aiger->output(num_state_bits_nba + i)));
+
+    return comp_aiger;
+}
+
 void InputDependentsSynthesiser::init_aiger() {
-    // AIGER inputs: indep inputs + outputs. dep inputs are calculated from indep inputs
+    unsigned num_states = m_nba_with_deps->num_states();
+    unsigned num_state_bits = count_bits(num_states + 1);
+
     std::vector<std::string> aiger_inputs;
-    
-    std::copy(m_indep_vars.begin(), m_indep_vars.end(),
-              std::back_inserter(aiger_inputs));
+    for (unsigned i = 0; i < num_state_bits; ++i) {
+        aiger_inputs.push_back("curr_s" + std::to_string(i));
+    }
+    for (const auto& var : m_indep_vars) aiger_inputs.push_back(var);
+    for (const auto& var : m_output_vars) aiger_inputs.push_back(var);
 
-    std::copy(m_output_vars.begin(), m_output_vars.end(),
-              std::back_inserter(aiger_inputs));
+    std::vector<std::string> aiger_outputs;
+    for (const auto& var : m_dep_vars) aiger_outputs.push_back(var);
+    for (unsigned i = 0; i < num_state_bits; ++i) {
+        aiger_outputs.push_back("next_s" + std::to_string(i));
+    }
 
-    unsigned num_latches = m_nba_with_deps->num_states() + 1;
-    m_aiger = std::make_shared<aig>(aiger_inputs, m_dep_vars, num_latches,
-                                    m_nba_with_deps->get_dict());
+    m_aiger = std::make_shared<aig>(aiger_inputs, aiger_outputs, 0, m_nba_with_deps->get_dict());
+
+    m_bdd_to_gate_map.clear();
+    unsigned input_offset = num_state_bits;
+    for (const auto& var : m_indep_vars) {
+        m_bdd_to_gate_map[m_nba_with_deps->register_ap(var)] = m_aiger->input_var(input_offset++);
+    }
+    for (const auto& var : m_output_vars) {
+        m_bdd_to_gate_map[m_nba_with_deps->register_ap(var)] = m_aiger->input_var(input_offset++);
+    }
 
     for (auto& var : m_dep_vars) {
         deps_bdd_vars.insert(this->ap_to_bdd_varnum(var));
     }
 }
 
+Gate InputDependentsSynthesiser::bdd_to_gate(const bdd& cond, std::unordered_map<int, Gate>& cache) {
+    if (cond == bddtrue) return m_aiger->aig_true();
+    if (cond == bddfalse) return m_aiger->aig_false();
+    
+    auto it = cache.find(cond.id());
+    if (it != cache.end()) return it->second;
 
-/**
- * @brief Defines the transition logic for the AIGER circuit's latches.
- *
- * Each state in the automaton corresponds to a latch in the AIGER model.
- * This function iterates through all transitions in the pruned automaton
- * (nba_without_deps) and builds the logic (OR of ANDs) that determines
- * the next value of each latch based on current latches and inputs.
- */
-void InputDependentsSynthesiser::define_next_latches() {
-    unordered_map<State, std::vector<StateGatePair>> dst_transitions;
+    int var_num = bdd_var(cond);
+    Gate v;
+    if (m_bdd_to_gate_map.count(var_num)) {
+        v = m_bdd_to_gate_map[var_num];
+    } else {
+        v = m_aiger->aig_false(); 
+    }
 
-    for (State state = 0; state < m_nba_without_deps->num_states(); state++) {
-        for (auto& transition : m_nba_without_deps->out(state)) {
-            State src = transition.src;
-            State dst = transition.dst;
-            
-            dst_transitions[dst].emplace_back(src, m_aiger->bdd2INFvar(transition.cond));
+    Gate high = bdd_to_gate(bdd_high(cond), cache);
+    Gate low = bdd_to_gate(bdd_low(cond), cache);
+
+    Gate res = m_aiger->aig_or(m_aiger->aig_and(v, high), m_aiger->aig_and(m_aiger->aig_not(v), low));
+    return cache[cond.id()] = res;
+}
+
+Gate InputDependentsSynthesiser::safe_aig_or(std::vector<Gate>& vs) {
+    if (vs.empty()) return m_aiger->aig_false();
+    return m_aiger->aig_or(vs);
+}
+
+void InputDependentsSynthesiser::define_next_state_logic() {
+    unsigned num_states = m_nba_without_deps->num_states();
+    unsigned num_state_bits = count_bits(num_states + 1);
+    
+    auto get_state_cond = [&](unsigned s) {
+        std::vector<Gate> bits;
+        for (unsigned i = 0; i < num_state_bits; ++i) {
+            Gate bit = m_aiger->input_var(i);
+            if ((s >> i) & 1) bits.push_back(bit);
+            else bits.push_back(m_aiger->aig_not(bit));
+        }
+        return m_aiger->aig_and(bits);
+    };
+
+    std::unordered_map<int, Gate> bdd_cache;
+    std::vector<std::vector<Gate>> next_bits(num_state_bits);
+    for (State s = 0; s < num_states; ++s) {
+        Gate is_s = get_state_cond(s);
+        for (auto& edge : m_nba_without_deps->out(s)) {
+            std::vector<Gate> args = {is_s, bdd_to_gate(edge.cond, bdd_cache)};
+            Gate active = m_aiger->aig_and(args);
+            for (unsigned i = 0; i < num_state_bits; ++i) {
+                if ((edge.dst >> i) & 1) next_bits[i].push_back(active);
+            }
         }
     }
 
-    for (auto& trans_to_dst : dst_transitions) {
-        State dst = trans_to_dst.first;
-        auto& trans = trans_to_dst.second;
-
-        Gate started_gate = m_aiger->latch_var(m_nba_without_deps->num_states());
-        State init_state = m_nba_without_deps->get_init_state_number();
-
-        vector<Gate> next_latch_conds;
-        for (auto& src_and_cond : trans) {
-            Gate src_latch = m_aiger->latch_var(src_and_cond.first);
-            Gate is_in_src = (src_and_cond.first == init_state) 
-                ? m_aiger->aig_or(src_latch, m_aiger->aig_not(started_gate))
-                : src_latch;
-            Gate cond_gate = src_and_cond.second;
-            next_latch_conds.emplace_back(m_aiger->aig_and(is_in_src, cond_gate));
-        }
-
-        Gate next_latch_gate;
-        if (next_latch_conds.size() == 1) {
-            next_latch_gate = next_latch_conds[0];
-        } else {
-            assert(!next_latch_conds.empty());
-            next_latch_gate = m_aiger->aig_or(next_latch_conds);
-        }
-        m_aiger->set_next_latch(dst, next_latch_gate);
-    }
-
-    // Set next for the 'started' latch
-    m_aiger->set_next_latch(m_nba_without_deps->num_states(), m_aiger->aig_true());
-
-    for (State state = 0; state < m_nba_without_deps->num_states(); state++) {
-        if (dst_transitions.find(state) == dst_transitions.end()) {
-            m_aiger->set_next_latch(state, m_aiger->aig_false());
-        }
+    for (unsigned i = 0; i < num_state_bits; ++i) {
+        m_aiger->set_output(m_dep_vars.size() + i, safe_aig_or(next_bits[i]));
     }
 }
 
-void InputDependentsSynthesiser::define_output_gates() {
+void InputDependentsSynthesiser::define_dependency_logic() {
     m_is_realizable = Realizability::REALIZABLE;
+    unsigned num_states = m_nba_with_deps->num_states();
+    unsigned num_state_bits = count_bits(num_states + 1);
 
+    auto get_state_cond = [&](unsigned s) {
+        std::vector<Gate> bits;
+        for (unsigned i = 0; i < num_state_bits; ++i) {
+            Gate bit = m_aiger->input_var(i);
+            if ((s >> i) & 1) bits.push_back(bit);
+            else bits.push_back(m_aiger->aig_not(bit));
+        }
+        return m_aiger->aig_and(bits);
+    };
+
+    std::unordered_map<int, Gate> bdd_cache;
     for (unsigned dep_idx = 0; dep_idx < m_dep_vars.size(); dep_idx++) {
         string& dep_var = m_dep_vars[dep_idx];
         vector<Gate> dependent_conds;
 
-        for (State state = 0; state < m_nba_with_deps->num_states(); state++) {
-            for (auto& transition : m_nba_with_deps->out(state)) {
-                State src = transition.src;
-                
-                // Causal Fix: Exists-quantify system output vars from the condition.
-                // This ensures the choice of dependent variable value doesn't "peek" at simultaneous system outputs.
-                bdd causal_cond = bdd_exist(transition.cond, m_output_vars_bdd);
+        for (State s = 0; s < num_states; s++) {
+            Gate is_s = get_state_cond(s);
+            for (auto& transition : m_nba_with_deps->out(s)) {
+                bdd causal_cond = transition.cond;
                 Gate partial_impl = get_partial_impl(causal_cond, dep_var);
-                
-                // Also quantify from the version without deps used for the gate activation
-                bdd cond_without_deps = m_bdd_to_bdd_without_deps[transition.cond.id()];
-                bdd causal_cond_without_deps = bdd_exist(cond_without_deps, m_output_vars_bdd);
+                bdd causal_cond_without_deps = m_bdd_to_bdd_without_deps[transition.cond.id()];
 
-                Gate started_gate = m_aiger->latch_var(m_nba_with_deps->num_states());
-                State init_state = m_nba_with_deps->get_init_state_number();
-                Gate src_latch = m_aiger->latch_var(src);
-                Gate is_in_src = (src == init_state)
-                    ? m_aiger->aig_or(src_latch, m_aiger->aig_not(started_gate))
-                    : src_latch;
-
-                std::vector<unsigned> dependent_edge_cond = {
-                    is_in_src,
-                    m_aiger->bdd2INFvar(causal_cond_without_deps),
+                std::vector<Gate> args = {
+                    is_s,
+                    bdd_to_gate(causal_cond_without_deps, bdd_cache),
                     partial_impl
                 };
-                dependent_conds.emplace_back(m_aiger->aig_and(dependent_edge_cond));
+                dependent_conds.emplace_back(m_aiger->aig_and(args));
             }
         }
-
         if(dependent_conds.empty()) {
             m_is_realizable = Realizability::UNREALIZABLE;
             return;
         }
-        m_aiger->set_output(dep_idx, m_aiger->aig_or(dependent_conds));
+        m_aiger->set_output(dep_idx, safe_aig_or(dependent_conds));
     }
 }
 
 Gate InputDependentsSynthesiser::get_partial_impl(const bdd& cond, string& dep_var) {
     string partial_impl_key = std::to_string(cond.id()) + "#" + dep_var;
 
-    // If exists in cache
     if (partial_impl_cache.find(partial_impl_key) != partial_impl_cache.end()) {
         return partial_impl_cache[partial_impl_key];
     }
 
-    // Create partial implementation
-    unordered_map<int, Gate> bdds_partial_impl;
-    Gate partial_impl = generate_partial_impl(cond, dep_var, bdds_partial_impl);
-
-    // Store to cache and return it
-    partial_impl_cache[partial_impl_key] = partial_impl;
-    return partial_impl_cache[partial_impl_key];
+    std::unordered_map<int, Gate> bdd_partial_impl;
+    Gate res = generate_partial_impl(cond, dep_var, bdd_partial_impl);
+    partial_impl_cache[partial_impl_key] = res;
+    return res;
 }
 
 Gate InputDependentsSynthesiser::generate_partial_impl(
-    const bdd& cond, string& dep_var, unordered_map<int, Gate>& bdd_partial_impl) {
-    if (cond == bddtrue) {
-        return m_aiger->aig_true();
-    }
-    if (cond == bddfalse) {
-        return m_aiger->aig_false();
-    }
+    const bdd& cond, string& dep_var,
+    std::unordered_map<int, Gate>& bdd_partial_impl) {
+    if (cond == bddtrue) return m_aiger->aig_true();
+    if (cond == bddfalse) return m_aiger->aig_false();
+    
     if (bdd_partial_impl.find(cond.id()) != bdd_partial_impl.end()) {
         return bdd_partial_impl[cond.id()];
     }
 
-    // Post-order traversal
-    Gate high_gate =
-        generate_partial_impl(bdd_high(cond), dep_var, bdd_partial_impl);
+    Gate high_gate = generate_partial_impl(bdd_high(cond), dep_var, bdd_partial_impl);
     Gate low_gate = generate_partial_impl(bdd_low(cond), dep_var, bdd_partial_impl);
 
-    bool is_dep_var = deps_bdd_vars.find(bdd_var(cond)) != deps_bdd_vars.end();
+    int var_num = bdd_var(cond);
+    bool is_dep_var = deps_bdd_vars.find(var_num) != deps_bdd_vars.end();
     Gate var_true_gate, var_false_gate;
 
-    // Determine the AIGER gates for the current BDD variable's branches
     if (!is_dep_var) {
-        // The variable is an independent input/output; map it to its AIGER gate.
-        var_true_gate = m_aiger->bdd2aigvar(bdd_ithvar(bdd_var(cond)));
+        if (m_bdd_to_gate_map.count(var_num)) {
+            var_true_gate = m_bdd_to_gate_map[var_num];
+        } else {
+            var_true_gate = m_aiger->aig_false();
+        }
         var_false_gate = m_aiger->aig_not(var_true_gate);
     } else {
-        // The variable is a dependent input.
-        bool is_bdd_var_cur_dep = bdd_var(cond) == ap_to_bdd_varnum(dep_var);
-
-        // If it's the current target variable, disable the false branch.
+        bool is_bdd_var_cur_dep = var_num == ap_to_bdd_varnum(dep_var);
         var_false_gate = is_bdd_var_cur_dep ? m_aiger->aig_false() : m_aiger->aig_true();
         var_true_gate = m_aiger->aig_true();
     }
-
 
     bdd_partial_impl[cond.id()] = m_aiger->aig_or(
         m_aiger->aig_and(var_false_gate, low_gate), m_aiger->aig_and(var_true_gate, high_gate));

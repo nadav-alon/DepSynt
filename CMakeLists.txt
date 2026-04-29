@@ -27,6 +27,7 @@ add_executable(depsynt ${non_executable_SRC} ${aiger_lib_SRC} bins/synthesis.cpp
 add_executable(inp_dep_synthesis ${non_executable_SRC} ${aiger_lib_SRC} bins/inp_dep_synthesis.cpp)
 add_executable(simulate_aiger ${non_executable_SRC} ${aiger_lib_SRC} bins/simulate_aiger.cpp)
 add_executable(test_aiger_builder ${non_executable_SRC} ${aiger_lib_SRC} bins/test_aiger_builder.cpp)
+add_executable(test_compose_aigers ${non_executable_SRC} ${aiger_lib_SRC} bins/test_compose_aigers.cpp)
 
 list(APPEND CMAKE_PREFIX_PATH "./libs/spot" "./libs/abc" "${MAIN_REPO_ROOT}/libs/abc")
 include_directories(./libs/abc/src ${MAIN_REPO_ROOT}/libs/abc/src)
@@ -119,3 +120,4 @@ target_link_libraries(depsynt boost_options spot bddx abc Threads::Threads)
 target_link_libraries(inp_dep_synthesis boost_options spot bddx abc Threads::Threads)
 target_link_libraries(simulate_aiger boost_options spot bddx abc Threads::Threads)
 target_link_libraries(test_aiger_builder boost_options spot bddx abc Threads::Threads)
+target_link_libraries(test_compose_aigers boost_options spot bddx abc Threads::Threads)
