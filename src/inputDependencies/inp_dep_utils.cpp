@@ -20,8 +20,6 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
          "Environment formula")
         ("system-formula,s", Options::value<string>(&options.system_formula),
          "System formula")
-        ("formula,f", Options::value<string>(&options.formula),
-         "Generic formula")
         ("measure-bdd,m", Options::bool_switch(&options.measure_bdd)->default_value(false),
          "Measure BDD")
         ("dependency-timeout,t", Options::value<int>(&options.dependency_timeout)->default_value(60000),

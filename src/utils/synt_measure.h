@@ -117,6 +117,18 @@ public:
 
     ~BaseDependentsMeasures() { delete currently_testing_var; }
 
+    int get_dependent_variables_count() const {
+        int count = 0;
+        for (const auto& var : m_tested_variables) {
+            if (var.is_dependent) count++;
+        }
+        return count;
+    }
+
+    void clear_tested_variables() {
+        m_tested_variables.clear();
+    }
+
     void start_testing_variable(string &var);
 
     void end_testing_variable(bool is_dependent,
@@ -143,6 +155,18 @@ public:
               m_skipped_dependency_check(skipped_dependency_check) {}
 
     void start_find_deps() { m_total_find_deps_duration.start(); }
+
+    Duration get_find_deps_duration() const {
+        return m_total_find_deps_duration.get_duration(false);
+    }
+
+    void reset_deps_measurements() {
+        clear_tested_variables();
+        m_total_find_deps_duration.reset();
+        m_search_pair_states_time.reset();
+        m_total_pair_states = -1;
+        m_is_search_dependencies_completed = false;
+    }
 
     void end_find_deps(bool is_completed);
 
@@ -215,6 +239,16 @@ public:
             extract_aiger_description(m_dependent_strategy, aiger_strat);
         }
         m_dependents_total_duration.end();
+    }
+
+    Duration get_dependents_synthesis_duration() const {
+        return m_dependents_total_duration.get_duration(false);
+    }
+
+    void reset_dependents_synthesis_duration() {
+        m_dependents_total_duration.reset();
+        // Reset dependent strategy description
+        m_dependent_strategy = AigerDescription();
     }
 
     void start_merge_strategies() { m_merge_strategies.start(); }

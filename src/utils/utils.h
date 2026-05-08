@@ -91,6 +91,11 @@ class TimeMeasure {
    public:
     TimeMeasure() : m_total_duration(-1), m_has_started(false) {}
 
+    void reset() {
+        m_total_duration = -1;
+        m_has_started = false;
+    }
+
     void start();
 
     bool has_started() const { return m_has_started; }

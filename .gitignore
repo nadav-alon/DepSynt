@@ -178,3 +178,5 @@ submit_strix
 __pycache__/
 
 .bin/
+
+benchmark_results/

@@ -98,10 +98,21 @@ spot::twa_graph_ptr construct_automaton(SyntInstance& synt_instance) {
 }
 
 spot::twa_graph_ptr construct_automaton_negation(SyntInstance& synt_instance, const spot::bdd_dict_ptr& dict) {
-    spot::translator trans(dict);
+    spot::translator trans;
     trans.set_type(spot::postprocessor::Buchi);
     trans.set_pref(spot::postprocessor::SBAcc);
-    auto automaton = trans.run(spot::formula::Not(synt_instance.get_formula_parsed()));
+    trans.set_level(spot::postprocessor::Low);
+    
+    // Bypass potential spot::formula::Not ABI bugs / infinite recursion by decomposing Implies
+    spot::formula f = synt_instance.get_formula_parsed();
+    spot::formula negated_f;
+    if (f.is(spot::op::Implies)) {
+        negated_f = spot::formula::And({f[0], spot::formula::Not(f[1])});
+    } else {
+        negated_f = spot::formula::Not(f);
+    }
+    
+    auto automaton = trans.run(negated_f);
 
     return automaton;
 }

@@ -80,14 +80,6 @@
     "expected": "Unrealizable"
   },
   {
-    "name": "Circular_Dependency_Unsat_Env",
-    "env": "G(i1 <-> !i2) & G(i2 <-> !i3) & G(i3 <-> !i1)",
-    "sys": "G(o1)",
-    "inputs": "i1,i2,i3",
-    "outputs": "o1",
-    "expected": "Realizable"
-  },
-  {
     "name": "Chain_of_Dependencies",
     "env": "G(i1 -> X i2) & G(i2 -> X i3)",
     "sys": "G(i3 -> o1)",

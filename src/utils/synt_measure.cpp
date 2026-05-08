@@ -129,6 +129,12 @@ void BaseDependentsMeasures::get_json_object(json& obj) const {
         tested_vars.emplace_back(var_obj);
     }
     dependency_obj.emplace("tested_dependencies", tested_vars);
+    
+    int total_deps = 0;
+    for (const auto& var : this->m_tested_variables) {
+        if(var.is_dependent) total_deps++;
+    }
+    dependency_obj.emplace("total_dependencies", total_deps);
 
     obj.emplace("dependency", dependency_obj);
 }
@@ -248,7 +254,7 @@ void SynthesisMeasure::get_json_object(json& obj) const {
         final_strategy_obj.emplace("merge_duration",
                                        m_merge_strategies.get_duration());
         aiger_description_obj(final_strategy_obj, m_final_strategy);
-        synthesis_process_obj.emplace("final_strategy", dependent_strategy_obj);
+        synthesis_process_obj.emplace("final_strategy", final_strategy_obj);
     }
 
     synthesis_process_obj.emplace("independent_strategy", independent_strategy_obj);

@@ -33,19 +33,32 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
 
     SynthesisCLIOptions dependant_synthesis_opts;
 
-    dependant_synthesis_opts.formula = options.env_formula;
+    spot::parsed_formula pf_env = spot::parse_infix_psl(options.env_formula);
+    if (pf_env.format_errors(std::cerr)) {
+        return EXIT_FAILURE;
+    }
+    spot::parsed_formula pf_sys = spot::parse_infix_psl(options.system_formula);
+    if (pf_sys.format_errors(std::cerr)) {
+        return EXIT_FAILURE;
+    }
+
+    spot::formula full_formula = spot::formula::Implies(pf_env.f, pf_sys.f);
+
+    std::vector<std::string> inputs_vec, outputs_vec;
+    extract_variables(options.inputs, inputs_vec);
+    extract_variables(options.outputs, outputs_vec);
+
+    auto* synt_instance = new SyntInstance(inputs_vec, outputs_vec, full_formula);
+
     dependant_synthesis_opts.inputs = options.inputs;
     dependant_synthesis_opts.outputs = options.outputs;
     dependant_synthesis_opts.verbose = options.verbose;
     dependant_synthesis_opts.measures_path = options.measures_path;
-
     dependant_synthesis_opts.merge_strategies = true;
     dependant_synthesis_opts.apply_model_checking = options.apply_model_checking;
     dependant_synthesis_opts.measure_bdd = options.measure_bdd;
     dependant_synthesis_opts.skip_unates = true;
     dependant_synthesis_opts.dependency_timeout = options.dependency_timeout;
-
-    auto* synt_instance = new SyntInstance(options.inputs, options.outputs, dependant_synthesis_opts.formula);
 
     measure = new InpDepSyntMeasure(*synt_instance, options.measure_bdd, false);
     InpDepSyntMeasure& dependent_measure = static_cast<InpDepSyntMeasure&>(*measure);
@@ -89,6 +102,13 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     if (!dep_realizable) {
         return EXIT_FAILURE;
     }
+
+    double input_dep_duration = dependent_measure.get_find_deps_duration();
+    int input_dep_count = dependent_measure.get_dependent_variables_count();
+    double input_dep_synthesis_duration = dependent_measure.get_dependents_synthesis_duration();
+    dependent_measure.set_input_dep_measures(input_dep_duration, input_dep_count, input_dep_synthesis_duration);
+    dependent_measure.reset_deps_measurements();
+    dependent_measure.reset_dependents_synthesis_duration();
 
 
     final_strategy = nullptr;
