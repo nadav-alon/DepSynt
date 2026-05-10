@@ -26,7 +26,7 @@ int ultra_naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strat
     synt_options.merge_strategies = true;
     synt_options.apply_model_checking = options.apply_model_checking;
     synt_options.measure_bdd = options.measure_bdd;
-    synt_options.skip_unates = true;
+    synt_options.skip_unates = options.skip_unates;
     synt_options.dependency_timeout = options.dependency_timeout;
 
     spot::parsed_formula pf_env = spot::parse_infix_psl(options.env_formula);

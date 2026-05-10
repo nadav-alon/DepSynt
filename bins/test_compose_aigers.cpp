@@ -5,6 +5,9 @@
 #include <spot/twaalgos/translate.hh>
 #include <spot/twaalgos/aiger.hh>
 #include <spot/twa/twagraph.hh>
+#include <spot/twaalgos/dot.hh>
+#include <fstream>
+#include <filesystem>
 #include "input_dependents_synthesiser.h"
 #include "automaton_aiger_builder.h"
 
@@ -30,7 +33,7 @@ void run_composition_test(const string& name,
     cout << "--- Testing: " << name << " ---" << endl;
     auto dict = aut->get_dict();
     
-    cout << "  Constructing NBA AIGER..." << endl;
+    cout << "  Constructing NBA AIGER... (num_states = " << aut->num_states() << ")" << endl;
     auto nba_aiger = AutomatonAigerBuilder::construct_transition_aiger(aut);
     
     cout << "  Composing AIGERs..." << endl;
@@ -40,6 +43,25 @@ void run_composition_test(const string& name,
     
     auto comp_aut = AutomatonAigerBuilder::aiger_to_automaton(comp_aiger, expected_states, comp_ap_names, dict, aut->acc());
     cout << "  Reconstructed States: " << comp_aut->num_states() << endl;
+
+    string safe_name = name;
+    for (char& c : safe_name) {
+        if (c == ' ' || c == '(' || c == ')' || c == '=' || c == '>') c = '_';
+    }
+    std::filesystem::path vis_dir = std::filesystem::path("visualizations") / safe_name;
+    std::filesystem::create_directories(vis_dir);
+
+    std::ofstream orig_aut_out(vis_dir / "original_automaton.dot");
+    spot::print_dot(orig_aut_out, aut);
+
+    std::ofstream transducer_aag_out(vis_dir / "transducer.aag");
+    spot::print_aiger(transducer_aag_out, dep_aiger);
+    
+    std::ofstream transducer_dot_out(vis_dir / "transducer.dot");
+    spot::print_dot(transducer_dot_out, dep_aiger);
+
+    std::ofstream comb_aut_out(vis_dir / "combined_automaton.dot");
+    spot::print_dot(comb_aut_out, comp_aut);
 
     if (!traces.empty()) {
         cout << "  Simulating traces..." << endl;
@@ -136,9 +158,9 @@ void test_sequential_manual() {
     run_composition_test("Sequential Manual (i=prev(o))", aut, dep_aiger, {}, {"i"}, {"o"}, aut->num_states() * 2, {"o"}, {trace});
 }
 
-void test_end_to_end_synthesis() {
+void test_sequential_input_dependency() {
     auto dict = spot::make_bdd_dict();
-    auto f = spot::parse_formula("G(o <-> i)");
+    auto f = spot::parse_formula("i & G(X i <-> o)");
     auto aut_with_deps = spot::translator(dict).run(f);
     auto aut_without_deps = spot::translator(dict).run(spot::parse_formula("G(1)")); 
     
@@ -148,19 +170,52 @@ void test_end_to_end_synthesis() {
     vector<string> dep_vars = {"i"};
     
     unordered_map<int, bdd> bdd_map;
+    bdd dep_cube = bddtrue;
+    for (auto v : dep_vars) dep_cube &= bdd_ithvar(dict->varnum(spot::formula::ap(v)));
     for (auto& edge : aut_with_deps->edges()) {
-        bdd_map[edge.cond.id()] = bddtrue; 
+        bdd_map[edge.cond.id()] = bdd_exist(edge.cond, dep_cube); 
     }
     
     InputDependentsSynthesiser synthesiser(aut_without_deps, aut_with_deps, input_vars, output_vars, indep_vars, dep_vars, bdd_map);
     auto dep_aiger = synthesiser.synthesis();
     
     Trace trace = {
-        {{{"o", false}}, {{"i", false}}},
-        {{{"o", true}},  {{"i", true}}}
+        {{{"o", false}}, {{"i", true}}},
+        {{{"o", true}},  {{"i", false}}},
+        {{{"o", false}}, {{"i", true}}}
     };
     
-    run_composition_test("E2E Synthesis Result", aut_with_deps, dep_aiger, indep_vars, dep_vars, output_vars, 2, {"o"}, {trace});
+    run_composition_test("Sequential Input Dependency Result", aut_with_deps, dep_aiger, indep_vars, dep_vars, output_vars, 4, {"o"}, {trace});
+}
+
+void test_mutex_dependency() {
+    auto dict = spot::make_bdd_dict();
+    auto f = spot::parse_formula("G(i1 ^ i2)");
+    auto aut_with_deps = spot::translator(dict).run(f);
+    auto aut_without_deps = spot::translator(dict).run(spot::parse_formula("G(1)")); 
+    
+    vector<string> input_vars = {"i1", "i2"};
+    vector<string> output_vars = {"o"};
+    vector<string> indep_vars = {"i2"};
+    vector<string> dep_vars = {"i1"};
+    
+    unordered_map<int, bdd> bdd_map;
+    bdd dep_cube = bddtrue;
+    for (auto v : dep_vars) dep_cube &= bdd_ithvar(dict->varnum(spot::formula::ap(v)));
+    for (auto& edge : aut_with_deps->edges()) {
+        bdd_map[edge.cond.id()] = bdd_exist(edge.cond, dep_cube); 
+    }
+    
+    InputDependentsSynthesiser synthesiser(aut_without_deps, aut_with_deps, input_vars, output_vars, indep_vars, dep_vars, bdd_map);
+    auto dep_aiger = synthesiser.synthesis();
+    
+    Trace trace = {
+        {{{"i2", false}, {"o", false}}, {{"i1", true}}},
+        {{{"i2", true},  {"o", true}},  {{"i1", false}}},
+        {{{"i2", false}, {"o", false}}, {{"i1", true}}}
+    };
+    
+    run_composition_test("Mutex Dependency Result", aut_with_deps, dep_aiger, indep_vars, dep_vars, output_vars, 4, {"o"}, {trace});
 }
 
 void test_multiple_variables() {
@@ -175,8 +230,10 @@ void test_multiple_variables() {
     vector<string> dep_vars = {"i", "q"};
     
     unordered_map<int, bdd> bdd_map;
+    bdd dep_cube = bddtrue;
+    for (auto v : dep_vars) dep_cube &= bdd_ithvar(dict->varnum(spot::formula::ap(v)));
     for (auto& edge : aut_with_deps->edges()) {
-        bdd_map[edge.cond.id()] = bddtrue; 
+        bdd_map[edge.cond.id()] = bdd_exist(edge.cond, dep_cube); 
     }
     
     InputDependentsSynthesiser synthesiser(aut_without_deps, aut_with_deps, input_vars, output_vars, indep_vars, dep_vars, bdd_map);
@@ -189,7 +246,8 @@ int main() {
     try {
         test_static_dependency();
         test_sequential_manual();
-        test_end_to_end_synthesis();
+        test_sequential_input_dependency();
+        test_mutex_dependency();
         test_multiple_variables();
     } catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;

@@ -150,13 +150,13 @@ void InputDependentsSynthesiser::init_aiger() {
     m_bdd_to_gate_map.clear();
     unsigned input_offset = num_state_bits;
     for (const auto& var : m_indep_vars) {
-        m_bdd_to_gate_map[m_nba_with_deps->register_ap(var)] = m_aiger->input_var(input_offset++);
+        m_bdd_to_gate_map[this->ap_to_bdd_varnum(var)] = m_aiger->input_var(input_offset++);
     }
     for (const auto& var : m_output_vars) {
-        m_bdd_to_gate_map[m_nba_with_deps->register_ap(var)] = m_aiger->input_var(input_offset++);
+        m_bdd_to_gate_map[this->ap_to_bdd_varnum(var)] = m_aiger->input_var(input_offset++);
     }
 
-    for (auto& var : m_dep_vars) {
+    for (const auto& var : m_dep_vars) {
         deps_bdd_vars.insert(this->ap_to_bdd_varnum(var));
     }
 }
@@ -189,7 +189,7 @@ Gate InputDependentsSynthesiser::safe_aig_or(std::vector<Gate>& vs) {
 }
 
 void InputDependentsSynthesiser::define_next_state_logic() {
-    unsigned num_states = m_nba_without_deps->num_states();
+    unsigned num_states = m_nba_with_deps->num_states();
     unsigned num_state_bits = count_bits(num_states + 1);
     
     auto get_state_cond = [&](unsigned s) {
@@ -206,8 +206,9 @@ void InputDependentsSynthesiser::define_next_state_logic() {
     std::vector<std::vector<Gate>> next_bits(num_state_bits);
     for (State s = 0; s < num_states; ++s) {
         Gate is_s = get_state_cond(s);
-        for (auto& edge : m_nba_without_deps->out(s)) {
-            std::vector<Gate> args = {is_s, bdd_to_gate(edge.cond, bdd_cache)};
+        for (auto& edge : m_nba_with_deps->out(s)) {
+            bdd causal_cond_without_deps = m_bdd_to_bdd_without_deps[edge.cond.id()];
+            std::vector<Gate> args = {is_s, bdd_to_gate(causal_cond_without_deps, bdd_cache)};
             Gate active = m_aiger->aig_and(args);
             for (unsigned i = 0; i < num_state_bits; ++i) {
                 if ((edge.dst >> i) & 1) next_bits[i].push_back(active);
@@ -263,7 +264,7 @@ void InputDependentsSynthesiser::define_dependency_logic() {
     }
 }
 
-Gate InputDependentsSynthesiser::get_partial_impl(const bdd& cond, string& dep_var) {
+Gate InputDependentsSynthesiser::get_partial_impl(const bdd& cond, const string& dep_var) {
     string partial_impl_key = std::to_string(cond.id()) + "#" + dep_var;
 
     if (partial_impl_cache.find(partial_impl_key) != partial_impl_cache.end()) {
@@ -277,7 +278,7 @@ Gate InputDependentsSynthesiser::get_partial_impl(const bdd& cond, string& dep_v
 }
 
 Gate InputDependentsSynthesiser::generate_partial_impl(
-    const bdd& cond, string& dep_var,
+    const bdd& cond, const string& dep_var,
     std::unordered_map<int, Gate>& bdd_partial_impl) {
     if (cond == bddtrue) return m_aiger->aig_true();
     if (cond == bddfalse) return m_aiger->aig_false();

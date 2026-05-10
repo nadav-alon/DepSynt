@@ -57,7 +57,7 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
     dependant_synthesis_opts.merge_strategies = true;
     dependant_synthesis_opts.apply_model_checking = options.apply_model_checking;
     dependant_synthesis_opts.measure_bdd = options.measure_bdd;
-    dependant_synthesis_opts.skip_unates = true;
+    dependant_synthesis_opts.skip_unates = options.skip_unates;
     dependant_synthesis_opts.dependency_timeout = options.dependency_timeout;
 
     measure = new InpDepSyntMeasure(*synt_instance, options.measure_bdd, false);

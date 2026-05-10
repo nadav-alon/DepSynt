@@ -30,6 +30,8 @@ bool parse_input_dependencies_synthesis_cli(int argc, const char* argv[],
          "Model name")
         ("algorithm,l", Options::value<string>()->default_value("ultra_naive"),
          "Algorithm to use: ultra_naive, naive")
+        ("skip-unates,u", Options::bool_switch(&options.skip_unates)->default_value(false),
+         "Skip unates")
         ("help,h", "Produce help message");
 
     // Check if help is requested
@@ -111,5 +113,6 @@ std::ostream &operator<<(std::ostream &out, const InputDependenciesCLIOptions &o
     out << "Outputs: " << options.outputs << endl;
     out << "Algorithm: " << inp_dep_algorithm_to_string(options.algorithm) << endl;
     out << "Measure BDD: " << options.measure_bdd << endl;
+    out << "Skip Unates: " << options.skip_unates << endl;
     return out;
 }

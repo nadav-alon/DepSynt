@@ -49,15 +49,15 @@ class InputDependentsSynthesiser {
         return bits;
     }
 
-    Gate get_partial_impl(const bdd& cond, std::string& dep_var);
-    Gate generate_partial_impl(const bdd& cond, std::string& dep_var,
+    Gate get_partial_impl(const bdd& cond, const std::string& dep_var);
+    Gate generate_partial_impl(const bdd& cond, const std::string& dep_var,
                                std::unordered_map<int, Gate>& bdd_partial_impl);
 
     Gate bdd_to_gate(const bdd& cond, std::unordered_map<int, Gate>& cache);
     Gate safe_aig_or(std::vector<Gate>& vs);
 
-    BDDVar ap_to_bdd_varnum(std::string& ap) {
-        return m_nba_with_deps->register_ap(ap);
+    BDDVar ap_to_bdd_varnum(const std::string& ap) {
+        return m_nba_with_deps->get_dict()->varnum(spot::formula::ap(ap));
     }
 
    public:

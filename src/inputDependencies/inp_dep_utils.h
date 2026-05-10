@@ -17,6 +17,7 @@ struct InputDependenciesCLIOptions: public BaseCLIOptions {
     int dependency_timeout;
     bool apply_model_checking;
     std::string model_name;
+    bool skip_unates;
 };
 
 std::ostream &operator<<(std::ostream &out, const InputDependenciesCLIOptions &options);

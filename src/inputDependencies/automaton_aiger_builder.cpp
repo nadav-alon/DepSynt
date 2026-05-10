@@ -1,6 +1,7 @@
 #include "automaton_aiger_builder.h"
 #include <spot/twaalgos/aiger.hh>
 #include <spot/twa/twagraph.hh>
+#include <spot/twaalgos/sccfilter.hh>
 #include <unordered_map>
 #include <algorithm>
 #include <iostream>
@@ -76,6 +77,9 @@ spot::aig_ptr AutomatonAigerBuilder::construct_transition_aiger(const spot::twa_
     }
 
     unsigned num_acc_sets = aut->acc().num_sets();
+    bool add_dummy_acc = (num_acc_sets == 0);
+    if (add_dummy_acc) num_acc_sets = 1;
+
     std::vector<std::string> aiger_outputs;
     for (unsigned i = 0; i < num_state_bits; ++i) {
         aiger_outputs.push_back("next_s" + std::to_string(i));
@@ -122,7 +126,7 @@ spot::aig_ptr AutomatonAigerBuilder::construct_transition_aiger(const spot::twa_
             }
 
             for (unsigned i = 0; i < num_acc_sets; ++i) {
-                if (edge.acc.has(i)) acc_bits_logic.at(i).push_back(transition_active);
+                if (add_dummy_acc || edge.acc.has(i)) acc_bits_logic.at(i).push_back(transition_active);
             }
             edge_idx++;
         }
@@ -153,16 +157,29 @@ spot::aig_ptr AutomatonAigerBuilder::construct_transition_aiger(const spot::twa_
     return aiger;
 }
 
-spot::twa_graph_ptr AutomatonAigerBuilder::aiger_to_automaton(const spot::aig_ptr& aiger, unsigned num_states, const std::vector<std::string>& ap_names, const spot::bdd_dict_ptr& dict, const spot::acc_cond& acc) {
+spot::twa_graph_ptr AutomatonAigerBuilder::aiger_to_automaton(const spot::aig_ptr& aiger, unsigned /*num_states*/, const std::vector<std::string>& ap_names, const spot::bdd_dict_ptr& dict, const spot::acc_cond& acc) {
     auto aut = make_twa_graph(dict);
-    aut->set_acceptance(acc.num_sets(), acc.get_acceptance());
-    unsigned num_state_bits = count_bits(num_states + 1);
-    unsigned num_acc_sets = acc.num_sets();
     
-    if (aiger->num_outputs() < num_state_bits + num_acc_sets) {
-        std::cerr << "Error: Not enough AIGER outputs" << std::endl;
-        return nullptr;
+    unsigned num_state_bits = 0;
+    while (num_state_bits < aiger->input_names().size() && 
+           aiger->input_names()[num_state_bits].find("curr_s") == 0) {
+        num_state_bits++;
     }
+    
+    unsigned num_states = 1 << num_state_bits;
+    unsigned num_acc_bits = 0;
+    while (num_state_bits + num_acc_bits < aiger->num_outputs() &&
+           aiger->output_names()[num_state_bits + num_acc_bits].find("acc") == 0) {
+        num_acc_bits++;
+    }
+
+    if (num_acc_bits > 0 && acc.num_sets() == 0) {
+        aut->set_acceptance(1, "Inf(0)");
+    } else {
+        aut->set_acceptance(acc.num_sets(), acc.get_acceptance());
+    }
+    
+    unsigned num_acc_sets = num_acc_bits;
 
     unsigned num_choice_bits = aiger->num_inputs() - num_state_bits - ap_names.size();
     unsigned max_choices = 1 << num_choice_bits;
@@ -207,6 +224,12 @@ spot::twa_graph_ptr AutomatonAigerBuilder::aiger_to_automaton(const spot::aig_pt
                 restricted_acc_bits.push_back(bdd_restrict(bit_bdd, combined_restriction));
             }
 
+            if (s == 2) {
+                std::cout << "For s=2, choice=" << i << ", restricted_bits: " 
+                          << (restricted_bits[0] == bddtrue) << ", " 
+                          << (restricted_bits[1] == bddtrue) << std::endl;
+            }
+
             for (unsigned s_prime = 0; s_prime < num_states; ++s_prime) {
                 bdd trans_cond = bddtrue;
                 for (unsigned k = 0; k < num_state_bits; ++k) {
@@ -226,5 +249,6 @@ spot::twa_graph_ptr AutomatonAigerBuilder::aiger_to_automaton(const spot::aig_pt
         }
     }
     aut->merge_edges(); 
+    aut = spot::scc_filter_states(aut);
     return aut;
 }

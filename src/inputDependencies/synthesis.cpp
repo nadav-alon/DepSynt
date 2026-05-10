@@ -446,7 +446,7 @@ bool decompose_synthesis_only_input_dependents(
     spot::aig_ptr& deps_strategy, vector<string>& independent_variables,
     vector<string>& dependent_variables, const vector<string>& ignored_vars)
 {
-    twa_graph_ptr negated_nba = construct_automaton_negation(synt_instance, gi.dict);
+    twa_graph_ptr negated_nba = (nba != nullptr) ? nba : construct_automaton_negation(synt_instance, gi.dict);
 
     find_input_dependencies_in_decomposition(options,
                                              synt_measure,
