@@ -1,0 +1,8 @@
+1
+first-responders_p_4_10
+pddl
+alive & ((dummy_val1 & !dummy_val2 & G(!alive | (dummy_val1 <-> X(!alive | dummy_val1))) & G(!alive | (dummy_val2 <-> X(!alive | dummy_val2)))) -> F(alive & dummy_val2)) & (alive U G!alive)
+true
+alive & ((dummy_val1 & !dummy_val2 & G(!alive | (dummy_val1 <-> X(!alive | dummy_val1))) & G(!alive | (dummy_val2 <-> X(!alive | dummy_val2)))) -> F(alive & dummy_val2)) & (alive U G!alive)
+alive,dummy_val1,dummy_val2
+
