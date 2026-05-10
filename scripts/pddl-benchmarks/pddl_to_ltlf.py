@@ -176,6 +176,9 @@ def main():
     parser.add_argument("-p", "--problem", required=True, help="PDDL problem file")
     parser.add_argument("-t", "--translate", default=os.path.expanduser("~/syft4fond/submodules/translate.py"), help="Path to translate.py")
     parser.add_argument("--ltl", action="store_true", help="Output infinite-trace LTL (using ltlfilt)")
+    parser.add_argument("--text-format", action="store_true", help="Output in the 8-line text format used by depsynt")
+    parser.add_argument("--benchmark-name", default="pddl_benchmark", help="Benchmark name for text format")
+    parser.add_argument("--benchmark-family", default="pddl", help="Benchmark family for text format")
     
     args = parser.parse_args()
 
@@ -190,17 +193,43 @@ def main():
     ltlf_formula = generate_ltlf(variables, initial_state, goal, operators)
     
     if args.ltl:
-        # print("[*] Converting to LTL using ltlfilt...", file=sys.stderr)
-        # Using -f directly might hit shell limits if formula is huge, but for now it's okay.
-        # Better to pipe it.
         process = subprocess.Popen(["ltlfilt", "--from-ltlf=alive"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ltl_formula, error = process.communicate(input=ltlf_formula.encode())
+        ltl_formula_bytes, error = process.communicate(input=ltlf_formula.encode())
         if process.returncode != 0:
             print(f"[-] ltlfilt failed: {error.decode()}", file=sys.stderr)
             sys.exit(1)
-        print(ltl_formula.decode().strip())
+        ltl_formula = ltl_formula_bytes.decode().strip()
     else:
-        print(ltlf_formula)
+        ltl_formula = ltlf_formula
+
+    # Partition: Actions are outputs, Fluents are inputs
+    all_ops = sorted(list(set([sanitize_name(op["name"]) for op in operators])))
+    all_fluents = []
+    for var in variables:
+        for val in var["values"]:
+            all_fluents.append(sanitize_name(val))
+    all_fluents = sorted(list(set(all_fluents)))
+    
+    # In FOND planning for synthesis:
+    # Outputs = Actions
+    # Inputs = Fluents (the environment's "state" that we observe)
+    if args.ltl:
+        all_fluents.append("alive")
+    input_vars = ",".join(sorted(list(set(all_fluents))))
+    output_vars = ",".join(all_ops)
+
+    if args.text_format:
+        # ID (placeholder 1), Name, Family, LTL, Env, Sys, Inputs, Outputs
+        print("1")
+        print(args.benchmark_name)
+        print(args.benchmark_family)
+        print(ltl_formula)
+        print("true") # Env
+        print(ltl_formula) # Sys
+        print(input_vars)
+        print(output_vars)
+    else:
+        print(ltl_formula)
 
 if __name__ == "__main__":
     main()

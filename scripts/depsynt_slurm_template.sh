@@ -18,8 +18,8 @@ source "$(pwd)/scripts/hpc_setup.sh"
 
 benchmark_family=$(sed -n "3p" "$FILEPATH" | tr -d '\r')
 benchmark_name=$(sed -n "2p" "$FILEPATH" | tr -d '\r')
-inputs_var=$(sed -n "5p" "$FILEPATH" | tr -d '\r')
-outputs_var=$(sed -n "6p" "$FILEPATH" | tr -d '\r')
+inputs_var=$(sed -n "7p" "$FILEPATH" | tr -d '\r')
+outputs_var=$(sed -n "8p" "$FILEPATH" | tr -d '\r')
 formula=$(sed -n "4p" "$FILEPATH" | tr -d '\r')
 
 allowed_family=({{ALLOWED_FAMILIES}})

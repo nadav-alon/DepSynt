@@ -25,6 +25,10 @@ vars:
   FIND_DEPENDENCIES_SUMMARY: ./tasks_output/find_deps.csv
   FIND_DEPENDENCIES_TIMEOUT: 60m
 
+  PDDL_BENCHMARKS_DIR: ./pddl-benchmarks/generated
+  PDDL_RESULTS_PATH: ./tasks_output/pddl_synthesis
+  PDDL_SUMMARY: ./tasks_output/pddl_synthesis.csv
+
   # HPC variables
   HPC_HOST: login
   HPC_REMOTE_DIR: work/DepSynt
@@ -222,6 +226,77 @@ tasks:
       - chmod +x ./scripts/tlsf_to_text.py
       - ./scripts/tlsf_to_text.py {{.GENERATED_BENCHMARK_PATH}}/tlsf {{.GENERATED_BENCHMARK_PATH}}/text
 
+  # PDDL Benchmarks
+  generate_pddl_benchmarks:
+    desc: Generate PDDL benchmarks from fond-domains
+    cmds:
+      - mkdir -p {{.PDDL_BENCHMARKS_DIR}}
+      - python3 ./scripts/pddl-benchmarks/generate_pddl_benchmarks.py
+
+  depsynt:pddl:
+    desc: Run DepSynt tool on PDDL benchmarks
+    cmds:
+      - mkdir -p {{.PDDL_RESULTS_PATH}}
+      - rm -f {{.PDDL_RESULTS_PATH}}/*
+      - rm -f ./submit_depsynt_pddl
+      - chmod +x ./scripts/slurm_task_gen.py
+      - ./scripts/slurm_task_gen.py --task=depsynt --timeout={{.SYNTHESIS_TIMEOUT}} --benchmarks-path={{.PDDL_BENCHMARKS_DIR}} --output-path={{.PDDL_RESULTS_PATH}} --families="pddl" > submit_depsynt_pddl
+      - sbatch submit_depsynt_pddl
+
+  depsynt:pddl:summary:
+    cmds:
+      - rm -f {{.PDDL_SUMMARY}}
+      - chmod +x ./scripts/results_summarizer.py
+      - ./scripts/results_summarizer.py --result-path={{.PDDL_RESULTS_PATH}} --benchmarks-path={{.PDDL_BENCHMARKS_DIR}} --summary-output={{.PDDL_SUMMARY}} --tool=depsynt
+
+  inp_dep_synthesis:pddl:
+    desc: Run inp_dep_synthesis tool on PDDL benchmarks
+    cmds:
+      - mkdir -p {{.PDDL_INP_DEP_RESULTS_PATH}}
+      - rm -f {{.PDDL_INP_DEP_RESULTS_PATH}}/*
+      - rm -f ./submit_inp_dep_pddl
+      - chmod +x ./scripts/slurm_task_gen.py
+      - ./scripts/slurm_task_gen.py --task=inp_dep_synthesis --timeout={{.SYNTHESIS_TIMEOUT}} --benchmarks-path={{.PDDL_BENCHMARKS_DIR}} --output-path={{.PDDL_INP_DEP_RESULTS_PATH}} --families="pddl" > submit_inp_dep_pddl
+      - sbatch submit_inp_dep_pddl
+    vars:
+      PDDL_INP_DEP_RESULTS_PATH: ./tasks_output/pddl_inp_dep_synthesis
+
+  inp_dep_synthesis:pddl:summary:
+    cmds:
+      - rm -f {{.PDDL_INP_DEP_SUMMARY}}
+      - chmod +x ./scripts/results_summarizer.py
+      - ./scripts/results_summarizer.py --result-path={{.PDDL_INP_DEP_RESULTS_PATH}} --benchmarks-path={{.PDDL_BENCHMARKS_DIR}} --summary-output={{.PDDL_INP_DEP_SUMMARY}} --tool=depsynt
+    vars:
+      PDDL_INP_DEP_RESULTS_PATH: ./tasks_output/pddl_inp_dep_synthesis
+      PDDL_INP_DEP_SUMMARY: ./tasks_output/pddl_inp_dep_synthesis.csv
+
+  find_input_deps:pddl:
+    desc: Run find_input_deps tool on PDDL benchmarks
+    cmds:
+      - mkdir -p {{.PDDL_FIND_INPUT_DEPS_RESULTS_PATH}}
+      - rm -f {{.PDDL_FIND_INPUT_DEPS_RESULTS_PATH}}/*
+      - rm -f ./submit_find_input_deps_pddl
+      - chmod +x ./scripts/slurm_task_gen.py
+      - ./scripts/slurm_task_gen.py --task=find_input_deps --timeout={{.FIND_DEPENDENCIES_TIMEOUT}} --benchmarks-path={{.PDDL_BENCHMARKS_DIR}} --output-path={{.PDDL_FIND_INPUT_DEPS_RESULTS_PATH}} > submit_find_input_deps_pddl
+      - sbatch submit_find_input_deps_pddl
+    vars:
+      PDDL_FIND_INPUT_DEPS_RESULTS_PATH: ./tasks_output/pddl_find_input_deps
+
+  hpc:run:pddl:
+    desc: Submit Slurm jobs for PDDL benchmarks on HPC
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task depsynt:pddl"
+
+  hpc:run:pddl:inp_dep:
+    desc: Submit Slurm jobs for inp_dep_synthesis on PDDL benchmarks on HPC
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task inp_dep_synthesis:pddl"
+
+  hpc:run:pddl:find_input_deps:
+    desc: Submit Slurm jobs for find_input_deps on PDDL benchmarks on HPC
+    cmds:
+      - ssh {{.HPC_HOST}} "cd {{.HPC_REMOTE_DIR}} && ./.bin/task find_input_deps:pddl"
+
   clean_skipped_synthesis:  # Example: task clean_skipped_synthesis CLEAN_PATH=./tasks_output/depsynt
     desc: Remove the skipped synthesis results
     summary: |
@@ -237,7 +312,7 @@ tasks:
     cmds:
       - mkdir -p .bin && [ -f ./.bin/task ] || curl -sL https://taskfile.dev/install.sh | sh -s -- -b ./.bin
       - ssh {{.HPC_HOST}} "mkdir -p {{.HPC_REMOTE_DIR}}"
-      - rsync -avz --exclude '.git' --exclude 'build/' --exclude 'tasks_output/' --exclude 'tasks_output_hpc/' --exclude 'CMakeCache.txt' --exclude 'CMakeFiles/' --exclude 'cmake_install.cmake' --exclude 'Makefile' --exclude 'compile_commands.json' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
+      - rsync -avz --exclude '.git' --exclude 'build/' --exclude 'tasks_output/' --exclude 'tasks_output_hpc/' --exclude 'fond-domains/' --exclude 'CMakeCache.txt' --exclude 'CMakeFiles/' --exclude 'cmake_install.cmake' --exclude 'Makefile' --exclude 'compile_commands.json' ./ {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/
 
   hpc:build:
     desc: Build the project on HPC using sbatch hpc_build.sh
@@ -265,7 +340,7 @@ tasks:
     cmds:
       - |
         echo "Monitoring Slurm jobs for user..."
-        while ssh {{.HPC_HOST}} "squeue -u \$USER | grep -E 'depsynt|find_de|build_de' > /dev/null"; do
+        while ssh {{.HPC_HOST}} "squeue -u \$USER | grep -E 'depsynt|find_de|build_de|inp_dep' > /dev/null"; do
           echo "Jobs are still running. Checking again in 60 seconds..."
           sleep 60
         done
@@ -275,7 +350,7 @@ tasks:
     desc: Fetch benchmark results from HPC
     cmds:
       - mkdir -p ./tasks_output_hpc
-      - scp -r {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/tasks_output/* ./tasks_output_hpc/
+      - rsync -avz {{.HPC_HOST}}:{{.HPC_REMOTE_DIR}}/tasks_output/ ./tasks_output_hpc/
       - echo "Results fetched to ./tasks_output_hpc"
 
   hpc:summary:

@@ -67,7 +67,7 @@ class BaseBenchmark:
 
         with open(text_file_path, 'r') as file:
             self.benchmark_id = file.readline().strip()
-            assert(self.benchmark_id == benchmark_id)
+            if self.benchmark_id != benchmark_id: print(f"Warning: {self.benchmark_id} != {benchmark_id} in {text_file_path}")
 
             self.benchmark_name = file.readline().strip()
             self.benchmark_family = file.readline().strip()
