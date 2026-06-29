@@ -151,7 +151,6 @@ int naive(InputDependenciesCLIOptions& options, spot::aig_ptr& final_strategy, S
         unsigned num_states_combined = full_nba->num_states() * (1 << num_state_bits_dep);
 
         final_synthesis_aut = AutomatonAigerBuilder::aiger_to_automaton(composed_aiger, num_states_combined, combined_ap_names, full_nba->get_dict(), full_nba->get_acceptance());
-        final_synthesis_aut = spot::scc_filter_states(final_synthesis_aut);
     }
 
     synthesis(full_synt_options, *synt, dependent_measure, final_strategy, final_synthesis_aut);

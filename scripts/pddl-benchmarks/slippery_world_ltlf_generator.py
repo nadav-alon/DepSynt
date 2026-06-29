@@ -35,7 +35,7 @@ def get_agent_preconditions(rows, cols):
     return prec_list
 
 
-def get_environment_transitions(rows, cols):
+def get_environment_transitions(rows, cols, determinize=False):
     trans_list = []
     # action left
     for i, col in enumerate(cols):
@@ -43,28 +43,40 @@ def get_environment_transitions(rows, cols):
         elif i == 1:
             trans_list.append((f"{col}l", f"({col} -> X(l -> {cols[i-1]}))"))
         else:
-            trans_list.append((f"{col}l", f"({col} -> X(l -> ({cols[i-1]} | {cols[i-2]})))"))
+            if determinize:
+                trans_list.append((f"{col}l", f"({col} -> X(l -> ((!slip & {cols[i-1]}) | (slip & {cols[i-2]}))))"))
+            else:
+                trans_list.append((f"{col}l", f"({col} -> X(l -> ({cols[i-1]} | {cols[i-2]})))"))
     # action right
     for i, col in enumerate(cols):
         if i == len(cols)-1: continue
         elif i == len(cols)-2:
             trans_list.append((f"{col}r", f"({col} -> X(r -> {cols[i+1]}))"))
         else:
-            trans_list.append((f"{col}r", f"({col} -> X(r -> ({cols[i+1]} | {cols[i+2]})))"))
+            if determinize:
+                trans_list.append((f"{col}r", f"({col} -> X(r -> ((!slip & {cols[i+1]}) | (slip & {cols[i+2]}))))"))
+            else:
+                trans_list.append((f"{col}r", f"({col} -> X(r -> ({cols[i+1]} | {cols[i+2]})))"))
     # action up
     for i, row in enumerate(rows):
         if i == 0: continue
         elif i == 1:
             trans_list.append((f"{row}u", f"({row} -> X(u -> {rows[i-1]}))"))
         else:
-            trans_list.append((f"{row}u", f"({row} -> X(u -> ({rows[i-1]} | {rows[i-2]})))"))
+            if determinize:
+                trans_list.append((f"{row}u", f"({row} -> X(u -> ((!slip & {rows[i-1]}) | (slip & {rows[i-2]}))))"))
+            else:
+                trans_list.append((f"{row}u", f"({row} -> X(u -> ({rows[i-1]} | {rows[i-2]})))"))
     # action down
     for i, row in enumerate(rows):
         if i == len(rows)-1: continue
         elif i == len(rows)-2:
             trans_list.append((f"{row}d", f"({row} -> X(d -> {rows[i+1]}))"))
         else:
-            trans_list.append((f"{row}d", f"({row} -> X(d -> ({rows[i+1]} | {rows[i+2]})))"))
+            if determinize:
+                trans_list.append((f"{row}d", f"({row} -> X(d -> ((!slip & {rows[i+1]}) | (slip & {rows[i+2]}))))"))
+            else:
+                trans_list.append((f"{row}d", f"({row} -> X(d -> ({rows[i+1]} | {rows[i+2]})))"))
     return trans_list
 
 def get_same_next_state(rows, cols):
@@ -77,57 +89,44 @@ def get_same_next_state(rows, cols):
         next_list.append((f"{row}r", f"({row} -> X(r -> {row}))"))
     return next_list
 
-def generate_ltlf(gridsize, init_pos=(1,1), goal_pos=(4,4), extra_equivalences=False):
+def generate_ltlf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False):
     rows, cols = generate_locations(gridsize)
     agent_actions = ["l", "r", "u", "d"]
-    
+
     mut_exc_agent_all, mut_exc_agent_comb = get_mutual_exclusion(agent_actions)
     mut_exc_env_rows_all, mut_exc_env_rows_comb = get_mutual_exclusion(rows)
     mut_exc_env_cols_all, mut_exc_env_cols_comb = get_mutual_exclusion(cols)
-    
-    env_transitions = get_environment_transitions(rows, cols) + get_same_next_state(rows, cols)
-    
-    if extra_equivalences:
-        env_transition_formulas = [f"({t[0]} <-> {t[1]})" for t in env_transitions]
-        extra_inputs = sorted(list(set([t[0] for t in env_transitions])))
-    else:
-        env_transition_formulas = [t[1] for t in env_transitions]
-        extra_inputs = []
+
+    env_transitions = get_environment_transitions(rows, cols, determinize) + get_same_next_state(rows, cols)
+    env_transition_formulas = [t[1] for t in env_transitions]
 
     agent_preconditions = get_agent_preconditions(rows, cols)
-    
+
     init_str = f"(r{init_pos[0]} & c{init_pos[1]})"
     agent_str = f"(({mut_exc_agent_all}) & {mut_exc_agent_comb})"
     env_str = f"((({mut_exc_env_rows_all}) & {mut_exc_env_rows_comb}) & (({mut_exc_env_cols_all}) & {mut_exc_env_cols_comb}) & ({' & '.join(env_transition_formulas)}))"
     prec_str = f"(G((X({cols[0]} | !{cols[0]})) -> ({' & '.join(agent_preconditions)})))"
     goal_str = f"F(r{goal_pos[0]} & c{goal_pos[1]})"
-    
-    # Combined formula according to notebook logic (just a big conjunction for now)
+
+    extra_inputs = ["slip"] if determinize else []
     combined = f"( {init_str} & G({agent_str}) & G({env_str}) & {prec_str} & {goal_str} )"
     return combined, rows + cols + extra_inputs, agent_actions
 
-def generate_tlsf(gridsize, init_pos=(1,1), goal_pos=(4,4), extra_equivalences=False):
+def generate_tlsf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False):
     rows, cols = generate_locations(gridsize)
     agent_actions = ["l", "r", "u", "d"]
-    
+
     mut_exc_agent_all, mut_exc_agent_comb = get_mutual_exclusion(agent_actions)
     mut_exc_env_rows_all, mut_exc_env_rows_comb = get_mutual_exclusion(rows)
     mut_exc_env_cols_all, mut_exc_env_cols_comb = get_mutual_exclusion(cols)
-    
-    env_transitions = get_environment_transitions(rows, cols) + get_same_next_state(rows, cols)
+
+    env_transitions = get_environment_transitions(rows, cols, determinize) + get_same_next_state(rows, cols)
     agent_preconditions = get_agent_preconditions(rows, cols)
-    
+
     init_f = f"r{init_pos[0]} && c{init_pos[1]}"
-    
-    inputs_list = rows + cols
-    if extra_equivalences:
-        extra_inputs = sorted(list(set([t[0] for t in env_transitions])))
-        inputs_list += extra_inputs
-        
-        equivalences = [f"({t[1]} <-> {t[0]})" for t in env_transitions]
-        env_trans_formula = ";\n    ".join(extra_inputs + equivalences)
-    else:
-        env_trans_formula = " && ".join([t[1] for t in env_transitions])
+
+    inputs_list = rows + cols + (["slip"] if determinize else [])
+    env_trans_formula = " && ".join([t[1] for t in env_transitions])
 
     template = """INFO {{
   TITLE:       "Slippery Grid World {gridsize}x{gridsize}"
@@ -194,21 +193,21 @@ def main():
     parser.add_argument("--init", type=int, nargs=2, default=[1, 1], help="Initial position (row col)")
     parser.add_argument("--goal", type=int, nargs=2, help="Goal position (row col), defaults to (gridsize, gridsize)")
     parser.add_argument("--output", type=str, help="Output file path")
-    parser.add_argument("--extra-equivalences", action="store_true", help="Add extra variables for environment transitions")
+    parser.add_argument("--determinize", action="store_true", help="Add slip variable to determinize slipping nondeterminism")
     args = parser.parse_args()
     
     goal = tuple(args.goal) if args.goal else (args.gridsize, args.gridsize)
     init = tuple(args.init)
     
     if args.format == "ltlf":
-        content, inputs, outputs = generate_ltlf(args.gridsize, init, goal, extra_equivalences=args.extra_equivalences)
+        content, inputs, outputs = generate_ltlf(args.gridsize, init, goal, determinize=args.determinize)
         prefix = f".inputs: {' '.join(inputs)}\n.outputs: {' '.join(outputs)}\n"
         content = prefix + content
     elif args.format == "tlsf":
-        content = generate_tlsf(args.gridsize, init, goal, extra_equivalences=args.extra_equivalences)
+        content = generate_tlsf(args.gridsize, init, goal, determinize=args.determinize)
     else: # both
-        ltlf, inputs, outputs = generate_ltlf(args.gridsize, init, goal, extra_equivalences=args.extra_equivalences)
-        tlsf = generate_tlsf(args.gridsize, init, goal, extra_equivalences=args.extra_equivalences)
+        ltlf, inputs, outputs = generate_ltlf(args.gridsize, init, goal, determinize=args.determinize)
+        tlsf = generate_tlsf(args.gridsize, init, goal, determinize=args.determinize)
         content = f"--- LTLf ---\n.inputs: {' '.join(inputs)}\n.outputs: {' '.join(outputs)}\n{ltlf}\n\n--- TLSF ---\n{tlsf}"
         
     if args.output:
