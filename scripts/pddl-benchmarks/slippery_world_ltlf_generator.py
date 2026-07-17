@@ -89,7 +89,57 @@ def get_same_next_state(rows, cols):
         next_list.append((f"{row}r", f"({row} -> X(r -> {row}))"))
     return next_list
 
-def generate_ltlf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False):
+def _axis_total_dynamics(axis, mneg, mpos):
+    """Total, deterministic, CAUSAL, NON-CLAIRVOYANT next-coordinate function.
+
+    `axis` is the ordered list of position vars (cols or rows); `mneg` is the
+    move that decreases the index (l for cols, u for rows) and `mpos` the move
+    that increases it (r / d).
+
+    Timing convention (non-clairvoyant): the starting cell and the move are read
+    at time t; the slip outcome and the resulting cell appear together at t+1
+    (`slip` is INSIDE the X):
+        (cur(t) & move(t)) -> X( (!slip & near) | (slip & far) )   [slip,near,far @ t+1]
+    so position(t+1) = f(position(t), move(t), slip(t+1)). The slip that resolves a
+    move is revealed WITH the result, one step AFTER the move is committed, so when
+    the controller chooses move(t) its outcome slip(t+1) is still in the future ->
+    the controller never "sees the slip coming" (no clairvoyance). The move is a
+    PAST output by the time the next position is set, and slip(t+1) is a current
+    input, so position is a causal input dependency (current-step outputs excluded,
+    past ones live in the automaton state).
+
+    (An earlier variant put `slip` OUTSIDE the X, at the same step as the move:
+    `(cur & move & slip) -> X(next)`. That also finds the dependency but is
+    clairvoyant -- the controller reads slip(t) before committing move(t) -- so it
+    is not the faithful slippery-world game. We use the slip-inside form here.)
+
+    Totality: for EVERY current coordinate and EVERY move-combo the next coordinate
+    is defined (a function of the next slip), so position stays determined on ALL
+    runs (incl. rule-violating ones in !phi). Resolution: no move / conflicting
+    same-axis move -> stay; single move -> slip-aware step, clamped at walls.
+    """
+    n = len(axis)
+    rules = []
+    for i, cur in enumerate(axis):
+        # neg move (decreasing index), slip-aware + wall clamp
+        neg_near = axis[i-1] if i >= 1 else cur          # wall: bump, stay
+        neg_far  = axis[i-2] if i >= 2 else neg_near      # clamp slip overshoot
+        # pos move (increasing index)
+        pos_near = axis[i+1] if i <= n - 2 else cur       # wall: bump, stay
+        pos_far  = axis[i+2] if i <= n - 3 else pos_near  # clamp slip overshoot
+        # stay cases do not involve slip; move cases resolve via the NEXT slip
+        rules.append((f"{cur}_stay0", f"(({cur} & !{mneg} & !{mpos}) -> X({cur}))"))
+        rules.append((f"{cur}_stayC", f"(({cur} & {mneg} & {mpos}) -> X({cur}))"))
+        rules.append((f"{cur}_neg",   f"(({cur} & {mneg} & !{mpos}) -> X((!slip & {neg_near}) | (slip & {neg_far})))"))
+        rules.append((f"{cur}_pos",   f"(({cur} & !{mneg} & {mpos}) -> X((!slip & {pos_near}) | (slip & {pos_far})))"))
+    return rules
+
+def get_total_dynamics(rows, cols):
+    """Totalized transition relation (2A): every coordinate is a total
+    deterministic function of (current coord, its two moves, slip)."""
+    return _axis_total_dynamics(cols, "l", "r") + _axis_total_dynamics(rows, "u", "d")
+
+def generate_ltlf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False, totalize=False):
     rows, cols = generate_locations(gridsize)
     agent_actions = ["l", "r", "u", "d"]
 
@@ -97,7 +147,10 @@ def generate_ltlf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False):
     mut_exc_env_rows_all, mut_exc_env_rows_comb = get_mutual_exclusion(rows)
     mut_exc_env_cols_all, mut_exc_env_cols_comb = get_mutual_exclusion(cols)
 
-    env_transitions = get_environment_transitions(rows, cols, determinize) + get_same_next_state(rows, cols)
+    if totalize:
+        env_transitions = get_total_dynamics(rows, cols)
+    else:
+        env_transitions = get_environment_transitions(rows, cols, determinize) + get_same_next_state(rows, cols)
     env_transition_formulas = [t[1] for t in env_transitions]
 
     agent_preconditions = get_agent_preconditions(rows, cols)
@@ -108,8 +161,17 @@ def generate_ltlf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False):
     prec_str = f"(G((X({cols[0]} | !{cols[0]})) -> ({' & '.join(agent_preconditions)})))"
     goal_str = f"F(r{goal_pos[0]} & c{goal_pos[1]})"
 
-    extra_inputs = ["slip"] if determinize else []
-    combined = f"( {init_str} & G({agent_str}) & G({env_str}) & {prec_str} & {goal_str} )"
+    # Totalized dynamics need the slip variable too.
+    extra_inputs = ["slip"] if (determinize or totalize) else []
+    # Structure as (environment assumptions) -> (system guarantees).
+    # The env assumptions (initial position + position mutual-exclusion + transition
+    # dynamics) must sit on the LEFT of the implication so they are preserved as
+    # positive conjuncts under negation (the dependency finder analyses the automaton
+    # of !phi). As a flat conjunction the dynamics are NOT preserved under negation,
+    # so position would be free to violate them and would never be found dependent.
+    assumptions = f"({init_str} & G({env_str}))"
+    guarantees = f"(G({agent_str}) & {prec_str} & {goal_str})"
+    combined = f"( {assumptions} -> {guarantees} )"
     return combined, rows + cols + extra_inputs, agent_actions
 
 def generate_tlsf(gridsize, init_pos=(1,1), goal_pos=(4,4), determinize=False):
@@ -194,19 +256,20 @@ def main():
     parser.add_argument("--goal", type=int, nargs=2, help="Goal position (row col), defaults to (gridsize, gridsize)")
     parser.add_argument("--output", type=str, help="Output file path")
     parser.add_argument("--determinize", action="store_true", help="Add slip variable to determinize slipping nondeterminism")
+    parser.add_argument("--totalize", action="store_true", help="Totalize the transition relation (2A): position becomes a total deterministic function of (current pos, moves, slip) on all runs. Implies slip.")
     args = parser.parse_args()
-    
+
     goal = tuple(args.goal) if args.goal else (args.gridsize, args.gridsize)
     init = tuple(args.init)
-    
+
     if args.format == "ltlf":
-        content, inputs, outputs = generate_ltlf(args.gridsize, init, goal, determinize=args.determinize)
+        content, inputs, outputs = generate_ltlf(args.gridsize, init, goal, determinize=args.determinize, totalize=args.totalize)
         prefix = f".inputs: {' '.join(inputs)}\n.outputs: {' '.join(outputs)}\n"
         content = prefix + content
     elif args.format == "tlsf":
         content = generate_tlsf(args.gridsize, init, goal, determinize=args.determinize)
     else: # both
-        ltlf, inputs, outputs = generate_ltlf(args.gridsize, init, goal, determinize=args.determinize)
+        ltlf, inputs, outputs = generate_ltlf(args.gridsize, init, goal, determinize=args.determinize, totalize=args.totalize)
         tlsf = generate_tlsf(args.gridsize, init, goal, determinize=args.determinize)
         content = f"--- LTLf ---\n.inputs: {' '.join(inputs)}\n.outputs: {' '.join(outputs)}\n{ltlf}\n\n--- TLSF ---\n{tlsf}"
         
